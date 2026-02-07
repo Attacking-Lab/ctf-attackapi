@@ -26,5 +26,5 @@ dev = [
 [tool.mypy]
 python_version = "3.9"
 disallow_untyped_defs = true
-packages = ["ad_ctf_apis"]
-mypy_path = ["./src", "./tests", "./scripts"]
+packages = ["ad_ctf_apis", "tests", "examples"]
+mypy_path = ["./src", "./tests", "./scripts", "./examples"]

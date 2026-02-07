@@ -1,20 +1,32 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional, Union, Any, cast
 from typing_extensions import TypeAlias
 
 RawFlagIds: TypeAlias = Union[list, dict[str, Union[str, list, dict]]]
 
 
-@dataclass
+def _flat(flag_ids: Any) -> list[str]:
+    if isinstance(flag_ids, list):
+        return flag_ids[0]
+    if isinstance(flag_ids, dict):
+        result = []
+        for value in flag_ids.values():
+            result += _flat(value)
+        return result
+    return [cast(str, flag_ids)]
+
+
+@dataclass(frozen=True)
 class Team:
-    id: Optional[int] = None
-    ip: Optional[str] = None
+    id: int
+    ip: str
     name: Optional[str] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class AttackInfo:
-    teams: dict[str, Team] = field(default_factory=dict)
+    teams: list[Team] = field(default_factory=list)
+    team_lookup: dict[str, Team] = field(default_factory=dict)
     services: set[str] = field(default_factory=set)
     flag_ids: dict[str, dict[str, RawFlagIds]] = field(default_factory=dict)
 
@@ -25,9 +37,9 @@ class AttackInfo:
         :param name: Team ID, IP, or name (as far as supported by the API)
         :return:
         """
-        return self.teams.get(str(name).lower())
+        return self.team_lookup.get(str(name).lower())
 
-    def flag_id(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
+    def flag_id_raw(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
         """
         Find flag IDs for a service and team. Flag IDs are returned in the APIs raw format.
 
@@ -48,17 +60,54 @@ class AttackInfo:
             team = team.lower()
             if team in flag_ids:
                 return flag_ids.get(team.lower())
-            elif team in self.teams:
-                return self.flag_id(service, self.teams[team])
+            elif team in self.team_lookup:
+                return self.flag_id_raw(service, self.team_lookup[team])
             return None
         elif isinstance(team, int):
             if str(team) in flag_ids:
                 return flag_ids.get(str(team))
-            elif str(team) in self.teams:
-                return self.flag_id(service, self.teams[str(team)])
+            elif str(team) in self.team_lookup:
+                return self.flag_id_raw(service, self.team_lookup[str(team)])
             return None
 
         raise ValueError(f"Invalid team type: {type(team)}: {team!r}")
+
+    def flag_id_flat(self, service: str, team: Union[str, int, Team]) -> list[str]:
+        """
+        Find flag IDs for a service and team.
+        Flag IDs are returned as a simple string list, containing all attack info for all flag stores.
+
+        :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
+        :param team: Team ID, IP, name, or instance (from .team(...))
+        :return:
+        """
+        flag_ids = self.flag_id_raw(service, team)
+        return _flat(flag_ids) if flag_ids is not None else []
+
+    def attack_info_raw(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
+        """
+        Find attack info for a service and team. Attack info is returned in the APIs raw format.
+
+        This is an alias for flag_id_raw(...).
+
+        :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
+        :param team: Team ID, IP, name, or instance (from .team(...))
+        :return:
+        """
+        return self.flag_id_raw(service, team)
+
+    def attack_info_flat(self, service: str, team: Union[str, int, Team]) -> list[str]:
+        """
+        Find attack info for a service and team.
+        Attack info is returned as a simple string list, containing all attack info for all flag stores.
+
+        This is an alias for flag_id_flat(...).
+
+        :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
+        :param team: Team ID, IP, name, or instance (from .team(...))
+        :return:
+        """
+        return self.flag_id_flat(service, team)
 
     def __str__(self) -> str:
         return repr(self)

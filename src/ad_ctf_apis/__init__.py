@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from ad-ctf-apis!")
+from .models import Team, AttackInfo
+
+__all__ = ["Team", "AttackInfo"]

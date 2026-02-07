@@ -1,0 +1,132 @@
+import hashlib
+import os
+import tempfile
+import time
+from importlib.metadata import version
+from pathlib import Path
+from typing import Optional, Union, Generic, TypeVar
+
+import aiologic
+from aiohttp import ClientSession, ClientTimeout
+from filelock import FileLock
+
+from ad_ctf_apis.async_api.decoders import Decoder
+from ad_ctf_apis.async_api.filelock import acquire_filelock
+from ad_ctf_apis.models import AttackInfo
+
+T = TypeVar("T")
+
+
+class GlobalCache(Generic[T]):
+    """In-memory cache for API responses. Shared between threads/loops, not shared between processes."""
+
+    def __init__(self) -> None:
+        # take the lock before modifying the cache.
+        # thanks to GIL this is not necessary for thread safety, but it avoids multiple concurrent loads
+        self.lock = aiologic.Lock()
+        self._cache: dict[str, tuple[float, T]] = {}
+
+    def age(self, key: str) -> Optional[float]:
+        if key in self._cache:
+            return time.time() - self._cache[key][0]
+        return None
+
+    def get(self, key: str) -> T:
+        return self._cache[key][1]
+
+    def set(self, key: str, value: T) -> None:
+        self._cache[key] = (time.time(), value)
+
+
+_api_response_cache: GlobalCache[AttackInfo] = GlobalCache()
+
+
+def _atomic_write(p: Path, raw: bytes) -> None:
+    tmpfile = p.with_suffix(f".json.tmp")
+    with tmpfile.open("wb") as f:
+        f.write(raw)
+        f.flush()
+        os.fsync(f.fileno())
+    tmpfile.replace(p)
+
+
+class AdCtfApiAsync:
+    """
+    Async API to retrieve AD team / flag information with as much caching as possible.
+    """
+
+    def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
+                 lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
+                 aiohttp_arguments: Optional[dict] = None) -> None:
+        if not url:
+            url = os.environ["CTF_API"]
+        if timeout < 1:
+            raise ValueError("Timeout must be at least 1 second")
+        if lifetime < timeout:
+            raise ValueError("Lifetime must be at least as long as timeout")
+
+        self._url = url
+        self._lifetime = lifetime
+        self._timeout = timeout
+        self._decoder = decoder or Decoder()
+        self._aiohttp_arguments = aiohttp_arguments or {}
+        self._cache_key = hashlib.sha256(url.encode()).hexdigest()[:12]
+        self._cache_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json"
+        self._lock_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
+
+    async def attack_info(self) -> AttackInfo:
+        # Step 1: check in-process cache
+        info = self._check_memory_cache()
+        if info is not None:
+            return info
+        # not found? lock it to avoid concurrent loads
+        async with _api_response_cache.lock:
+            # check again to avoid race conditions
+            info = self._check_memory_cache()
+            if info is not None:
+                return info
+            # not found => load from file or API
+            info = await self._attack_info_from_file()
+            _api_response_cache.set(self._cache_key, info)
+            return info
+
+    def _check_memory_cache(self) -> Optional[AttackInfo]:
+        if (age := _api_response_cache.age(self._cache_key)) is not None and age <= self._lifetime:
+            return _api_response_cache.get(self._cache_key)
+        return None
+
+    def _check_file_cache(self) -> Optional[AttackInfo]:
+        try:
+            age = time.time() - self._cache_file.stat().st_mtime
+            if age <= self._lifetime:
+                # TODO check what happens on concurrent read/writes on Windows!
+                return self._decoder.parse(self._cache_file.read_bytes())
+        except FileNotFoundError:
+            pass
+        return None
+
+    async def _attack_info_from_file(self) -> AttackInfo:
+        # Step 2: try to load from file
+        info = self._check_file_cache()
+        if info is not None:
+            return info
+        # not found? lock it to avoid concurrent API requests
+        lock = FileLock(self._lock_file)
+        async with acquire_filelock(lock):
+            # recheck to avoid race conditions
+            info = self._check_file_cache()
+            if info is not None:
+                return info
+            # not found => load from API
+            raw = await self._attack_info_from_remote()
+            info = self._decoder.parse(raw)
+            # and save to file (atomic)
+            _atomic_write(self._cache_file, raw)
+            return info
+
+    async def _attack_info_from_remote(self) -> bytes:
+        headers = {"User-Agent": "python/ad_ctf_apis " + version("ad_ctf_apis")}
+        async with ClientSession(headers=headers, **self._aiohttp_arguments) as session:
+            async with session.get(self._url, timeout=ClientTimeout(total=self._timeout)) as response:
+                response.raise_for_status()
+                return await response.read()

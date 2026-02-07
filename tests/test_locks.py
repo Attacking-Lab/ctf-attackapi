@@ -10,6 +10,7 @@ import aiologic
 from filelock import FileLock
 
 from ad_ctf_apis.async_api.filelock import acquire_filelock
+from tests.utils import BaseTestCase
 
 
 class AsyncThread(threading.Thread):
@@ -31,7 +32,7 @@ class AsyncProcess(multiprocessing.Process):
         asyncio.run(self.f(*self.args))
 
 
-class LocksTestCase(unittest.TestCase):
+class LocksTestCase(BaseTestCase):
     def test_async_multithreaded(self) -> None:
         """Two different loops in two different threads compete on one async_api lock"""
         lock = aiologic.Lock()

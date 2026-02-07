@@ -26,11 +26,13 @@ class Dialect(ABC):
     def matches(self, data: dict) -> bool:
         raise NotImplementedError
 
-    def id_from_ip(self, ip: str) -> Optional[int]:
-        return None
+    def id_from_ip(self, ip: str) -> int:
+        return 0
 
-    def ip_from_id(self, id: int) -> Optional[str]:
-        return None if self.ip_pattern is None else self.ip_pattern.format(id)
+    def ip_from_id(self, team_id: int) -> str:
+        if self.ip_pattern is None:
+            raise Exception(f"ID to IP conversion required, but no IP pattern defined for dialect {self.name!r}")
+        return self.ip_pattern.format(team_id)
 
 
 class DefaultDialect(Dialect):
@@ -42,18 +44,18 @@ class SaarctfDialect(Dialect):
     def matches(self, data: dict) -> bool:
         return "flag_ids" in data and "teams" in data and len(data["teams"]) > 0 and isinstance(data["teams"][0], dict)
 
-    def id_from_ip(self, ip: str) -> Optional[int]:
+    def id_from_ip(self, ip: str) -> int:
         return int(ip.split(".")[2])  # actually not needed, saarCTF API exposes full team info
 
-    def ip_from_id(self, id: int) -> Optional[str]:
-        return f"10.{32 + (id // 200)}.{id % 200}.2"  # actually not needed, saarCTF API exposes full team info
+    def ip_from_id(self, team_id: int) -> str:
+        return f"10.{32 + (team_id // 200)}.{team_id % 200}.2"  # actually not needed, saarCTF API exposes full team info
 
 
 class FaustDialect(Dialect):
     def matches(self, data: dict) -> bool:
         return "flag_ids" in data and "teams" in data and len(data["teams"]) > 0 and isinstance(data["teams"][0], int)
 
-    def id_from_ip(self, ip: str) -> Optional[int]:
+    def id_from_ip(self, ip: str) -> int:
         return int(ip.split(":")[2])
 
 
@@ -61,7 +63,7 @@ class EnowarsDialect(Dialect):
     def matches(self, data: dict) -> bool:
         return "services" in data and "availableTeams" in data
 
-    def id_from_ip(self, ip: str) -> Optional[int]:
+    def id_from_ip(self, ip: str) -> int:
         """Actually, IDs don't matter for enowars format"""
         return int(ip.split(".")[2])
 
@@ -135,9 +137,10 @@ class Decoder:
             else:
                 raise ValueError(f"Unknown team type: {type(team)}: {json.dumps(team)}")
 
+            info.teams.append(team)
             if team.id is not None:
-                info.teams[str(team.id)] = team
+                info.team_lookup[str(team.id)] = team
             if team.ip is not None:
-                info.teams[team.ip.lower()] = team
+                info.team_lookup[team.ip.lower()] = team
             if team.name is not None:
-                info.teams[team.name.lower()] = team
+                info.team_lookup[team.name.lower()] = team
