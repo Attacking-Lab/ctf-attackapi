@@ -1,0 +1,30 @@
+[project]
+name = "ad-ctf-apis"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Markus Bauer", email = "markus.bauer@cispa.saarland" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "aiohttp>=3.10.11",
+    "aiologic>=0.16.0",
+    "filelock>=3.19.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.27,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=8.4.2",
+]
+
+[tool.mypy]
+python_version = "3.9"
+disallow_untyped_defs = true
+packages = ["ad_ctf_apis"]
+mypy_path = ["./src", "./tests", "./scripts"]
