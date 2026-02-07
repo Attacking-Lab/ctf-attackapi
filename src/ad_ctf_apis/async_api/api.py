@@ -59,6 +59,8 @@ class AdCtfApiAsync:
                  lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
                  aiohttp_arguments: Optional[dict] = None) -> None:
         if not url:
+            if "CTF_API" not in os.environ:
+                raise Exception("Please call configure() or set CTF_API environment variable!")
             url = os.environ["CTF_API"]
         if timeout < 1:
             raise ValueError("Timeout must be at least 1 second")

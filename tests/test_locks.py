@@ -2,34 +2,13 @@ import asyncio
 import multiprocessing
 import os
 import tempfile
-import threading
 import unittest
-from typing import Coroutine, Callable, Any
 
 import aiologic
 from filelock import FileLock
 
 from ad_ctf_apis.async_api.filelock import acquire_filelock
-from tests.utils import BaseTestCase
-
-
-class AsyncThread(threading.Thread):
-    def __init__(self, f: Coroutine) -> None:
-        super().__init__(daemon=True)
-        self.f = f
-
-    def run(self) -> None:
-        asyncio.run(self.f)
-
-
-class AsyncProcess(multiprocessing.Process):
-    def __init__(self, f: Callable, *args: Any) -> None:
-        super().__init__(daemon=True)
-        self.f = f
-        self.args = args
-
-    def run(self) -> None:
-        asyncio.run(self.f(*self.args))
+from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
 class LocksTestCase(BaseTestCase):
@@ -121,8 +100,10 @@ class LocksTestCase(BaseTestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             events = multiprocessing.Manager().list()
 
-            processes = [AsyncProcess(self._filetest_t1, tmpdir, events),
-                         AsyncProcess(self._filetest_t2, tmpdir, events)]
+            processes = [
+                AsyncProcess(self._filetest_t1, tmpdir, events),
+                AsyncProcess(self._filetest_t2, tmpdir, events)
+            ]
             for process in processes:
                 process.start()
             for process in processes:
@@ -164,7 +145,7 @@ class LocksTestCase(BaseTestCase):
 
         self.assertEqual(list(events), [3])
 
-    # TODO cross-platform
+    # TODO run cross-platform
 
 
 if __name__ == '__main__':

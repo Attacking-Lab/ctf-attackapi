@@ -4,28 +4,13 @@ import multiprocessing
 import os
 import tempfile
 import time
-from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
-from typing import Generator
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from ad_ctf_apis.async_api import AdCtfApiAsync
-from tests.test_locks import AsyncProcess
-from tests.utils import BaseTestCase
-
-
-async def process_inner(path: Path, counter: Synchronized[int]) -> None:
-    api = AdCtfApiAsync("http://localhost/attack.json", path)
-    with ApiTestCase.patch_request(ApiTestCase._res / "saarctf2025.json") as mock:
-        await api.attack_info()
-        with counter:
-            counter.value += mock.call_count
-
-
-async def make_async(x: bytes) -> bytes:
-    return x
+from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
 class ApiTestCase(BaseTestCase):
@@ -37,17 +22,6 @@ class ApiTestCase(BaseTestCase):
 
     def tearDown(self) -> None:
         self.tempdir.cleanup()
-
-    @staticmethod
-    @contextmanager
-    def patch_request(f: Path) -> Generator[Mock]:
-        with patch("aiohttp.client.ClientSession.get") as mock:
-            mock2 = MagicMock()
-            mock.return_value = mock2
-            mock2.__aenter__.return_value = mock2
-            mock2.raise_for_status.return_value = None
-            mock2.read.side_effect = lambda *args, **kwargs: make_async(f.read_bytes())
-            yield mock
 
     async def test_fetch(self) -> None:
         with self.patch_request(self._res / "saarctf2025.json") as mock:
@@ -93,6 +67,15 @@ class ApiTestCase(BaseTestCase):
             await asyncio.gather(task(), task(), task(), task(), task(), task(), task(), task())
             mock.assert_called_once()
 
+    def test_concurrent_threads(self) -> None:
+        with self.patch_request(self._res / "saarctf2025.json") as mock:
+            threads = [AsyncThread(self.api.attack_info()) for _ in range(16)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=1)
+            mock.assert_called_once()
+
     def test_concurrent_processes(self) -> None:
         counter = multiprocessing.Value("i", 0)
         processes = [AsyncProcess(process_inner, self.tempdir.name, counter) for _ in range(16)]
@@ -118,6 +101,14 @@ class ApiTestCase(BaseTestCase):
             process.join(timeout=3)
         for process in processes:
             self.assertEqual(0, process.exitcode)
+
+
+async def process_inner(path: Path, counter: Synchronized[int]) -> None:
+    api = AdCtfApiAsync("http://localhost/attack.json", path)
+    with BaseTestCase.patch_request(BaseTestCase._res / "saarctf2025.json") as mock:
+        await api.attack_info()
+        with counter:
+            counter.value += mock.call_count
 
 
 def _slow_atomic_write(p: Path, raw: bytes) -> None:
