@@ -14,9 +14,9 @@ This package fetches, parses, and caches attack info for you, so you can focus o
 Features
 --------
 
-- Efficient caching between threads or processes
-- Direct access from your Python exploits (sync or async)
-- Optional REST API for exploits in other languages (with OpenAPI spec)
+- Efficient caching between threads, processes, or containers
+- Direct access from your Python exploits ([sync](./examples/basic.py) or [async](./examples/basic_async.py))
+- Optional REST API for exploits in other languages (with [OpenAPI spec](./api.yaml))
 - Unifies team, IP, and flag info lookup between different CTFs:
     - Supports [ENOwars](https://enowars.com)
     - Supports [FaustCTF](https://faustctf.net)
@@ -62,6 +62,13 @@ curl "http://localhost:14320/api/v1/teams"
 ```
 
 The server has documentation on its frontpage, and here is [the OpenAPI specification](./api.yaml).
+
+If you're not pwning in Python and dislike pip, try docker:
+```shell
+# edit compose.yaml and insert your CTF API URL
+docker compose up -d
+# visit http://localhost:14320/
+```
 
 
 Structure
@@ -161,3 +168,9 @@ Environment variables:
 - `CTF_API_TMP_DIR`: Cache directory (gunicorn only)
 - `CTF_API_LIFETIME`: Lifetime of cached data in seconds (gunicorn only)
 - `CTF_API_TIMEOUT`: Timeout for API calls in seconds (gunicorn only)
+
+You can also use docker to run the server:
+```shell
+# edit compose.yaml and insert your CTF API URL before!
+docker compose up -d
+```

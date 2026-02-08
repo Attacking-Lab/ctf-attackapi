@@ -1,0 +1,11 @@
+services:
+  ad_ctf_apis:
+    build: .
+    ports:
+      - "14320:14320"
+    environment:
+      # TODO set your game's URL
+      - CTF_API=https://ctf.saarland/static/scoreboard/api/attack.json
+    # uncomment if you want the cache to be stored on be persistent / shared between containers
+    #volumes:
+    #  - ./cache:/tmp
