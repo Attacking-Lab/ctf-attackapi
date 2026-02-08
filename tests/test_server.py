@@ -5,16 +5,16 @@ from pathlib import Path
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
 
-from ad_ctf_apis.async_api import AdCtfApiAsync
-from ad_ctf_apis.server.docs import docs_json
-from ad_ctf_apis.server.server import AdCtfServer
+from attackapi.async_api import AdCtfApiAsync
+from attackapi.server.docs import docs_json
+from attackapi.server.server import AdCtfServer
 from tests.utils import BaseTestCase
 
 
 class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
 
     def setUp(self) -> None:
-        from ad_ctf_apis.async_api.api import _api_response_cache
+        from attackapi.async_api.api import _api_response_cache
         _api_response_cache._cache.clear()
         self.tempdir = tempfile.TemporaryDirectory()
         self.api = AdCtfApiAsync("http://localhost/attack.json", self.tempdir.name)
@@ -41,11 +41,11 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
         async with self.client.request("GET", "/") as resp:
             self.assertEqual(resp.status, 200)
             text = await resp.text()
-            self.assertIn("AD CTF API", text)
+            self.assertIn("CTF AttackAPI Server", text)
         async with self.client.request("GET", "/api.yaml") as resp:
             self.assertEqual(resp.status, 200)
             text = await resp.text()
-            self.assertIn("AD CTF API", text)
+            self.assertIn("CTF AttackAPI Server", text)
 
     async def test_services(self) -> None:
         async with self.client.request("GET", "/api/v1/services") as resp:

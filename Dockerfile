@@ -13,8 +13,8 @@ RUN uv sync --no-dev --all-extras --compile-bytecode --frozen
 
 ENTRYPOINT ["uv", "run", "--no-sync"]
 CMD [ \
-    "gunicorn", "ad_ctf_apis.server:create_app", \
+    "gunicorn", "attackapi.server:create_app", \
     "--bind", ":14320", \
-    "--worker-class", "ad_ctf_apis.server.worker.MyGunicornWebWorker", \
+    "--worker-class", "attackapi.server.worker.MyGunicornWebWorker", \
     "--workers", "4" \
 ]

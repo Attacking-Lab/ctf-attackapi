@@ -5,13 +5,13 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 from threading import Thread
 
-from ad_ctf_apis.sync_api import AdCtfApiSync
+from attackapi.sync_api import AdCtfApiSync
 from tests.utils import BaseTestCase
 
 
 class SyncApiTestCase(BaseTestCase):
     def setUp(self) -> None:
-        from ad_ctf_apis.async_api.api import _api_response_cache
+        from attackapi.async_api.api import _api_response_cache
         _api_response_cache._cache.clear()
         self.tempdir = tempfile.TemporaryDirectory()
         self.api = AdCtfApiSync("http://localhost/attack.json", self.tempdir.name)

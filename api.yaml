@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: AD CTF API Wrapper
+  title: CTF AttackAPI Server
   description: REST API for attack-defense CTF attack information, fully cached
   version: 0.1.0
 servers:

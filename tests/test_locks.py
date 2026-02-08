@@ -7,7 +7,7 @@ import unittest
 import aiologic
 from filelock import FileLock
 
-from ad_ctf_apis.async_api.filelock import acquire_filelock
+from attackapi.async_api.filelock import acquire_filelock
 from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
 
 

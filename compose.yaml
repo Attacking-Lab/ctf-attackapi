@@ -1,5 +1,5 @@
 services:
-  ad_ctf_apis:
+  ctf_attackapi:
     build: .
     ports:
       - "14320:14320"

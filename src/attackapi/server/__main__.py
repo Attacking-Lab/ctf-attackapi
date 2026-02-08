@@ -3,8 +3,8 @@ import tempfile
 
 from aiohttp import web
 
-from ad_ctf_apis.async_api import AdCtfApiAsync
-from ad_ctf_apis.server.server import AdCtfServer
+from attackapi.async_api import AdCtfApiAsync
+from attackapi.server.server import AdCtfServer
 
 
 def main() -> None:

@@ -2,8 +2,8 @@ import json
 import time
 import unittest
 
-from ad_ctf_apis.async_api.decoders import Decoder
-from ad_ctf_apis.models import Team
+from attackapi.async_api.decoders import Decoder
+from attackapi.models import Team
 from tests.utils import BaseTestCase
 
 

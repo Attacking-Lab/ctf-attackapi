@@ -10,9 +10,9 @@ import aiologic
 from aiohttp import ClientSession, ClientTimeout
 from filelock import FileLock
 
-from ad_ctf_apis.async_api.decoders import Decoder
-from ad_ctf_apis.async_api.filelock import acquire_filelock
-from ad_ctf_apis.models import AttackInfo
+from attackapi.async_api.decoders import Decoder
+from attackapi.async_api.filelock import acquire_filelock
+from attackapi.models import AttackInfo
 
 T = TypeVar("T")
 
@@ -81,7 +81,9 @@ class AdCtfApiAsync:
         self._lifetime = lifetime
         self._timeout = timeout
         self._decoder = decoder or Decoder()
-        self._aiohttp_arguments = aiohttp_arguments or {}
+        self._aiohttp_arguments = aiohttp_arguments or {
+            "headers": {"User-Agent": "python/attackapi " + version("ctf-attackapi")}
+        }
         self._cache_key = hashlib.sha256(url.encode()).hexdigest()[:12]
         self._cache_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json"
         self._lock_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
@@ -141,8 +143,7 @@ class AdCtfApiAsync:
             return info
 
     async def _attack_info_from_remote(self) -> bytes:
-        headers = {"User-Agent": "python/ad_ctf_apis " + version("ad_ctf_apis")}
-        async with ClientSession(headers=headers, **self._aiohttp_arguments) as session:
+        async with ClientSession(**self._aiohttp_arguments) as session:
             async with session.get(self._url, timeout=ClientTimeout(total=self._timeout)) as response:
                 response.raise_for_status()
                 return await response.read()

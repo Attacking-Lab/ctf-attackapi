@@ -1,11 +1,11 @@
 [project]
-name = "ad-ctf-apis"
+name = "ctf-attackapi"
 version = "0.1.0"
 description = "Get attack infos in attack-defense CTFs quickly to your exploits. CTF-agnostic and cached."
 readme = "README.md"
 license = "MIT"
 license_files = ["LICENSE.txt"]
-keywords = ["Attack-Defense", "CTF", "Attack Info", "Flag IDs", "FaustCTF", "ENOwars", "saarCTF"]
+keywords = ["Attack-Defense", "CTF", "Attack API", "Attack Info", "Flag IDs", "FaustCTF", "ENOwars", "saarCTF"]
 authors = [
     { name = "Markus Bauer", email = "markus.bauer@cispa.saarland" }
 ]
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Security",
+    "Typing :: Typed",
 ]
 dependencies = [
     "aiohttp>=3.13.3",
@@ -37,9 +38,9 @@ server = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Attacking-Lab/ad-ctf-apis"
-Repository = "https://github.com/Attacking-Lab/ad-ctf-apis"
-Issues = "https://github.com/Attacking-Lab/ad-ctf-apis/issues"
+Homepage = "https://github.com/Attacking-Lab/ctf-attackapi"
+Repository = "https://github.com/Attacking-Lab/ctf-attackapi"
+Issues = "https://github.com/Attacking-Lab/ctf-attackapi/issues"
 Background = "https://wiki.attacking-lab.com/attack-defense/"
 
 [build-system]
@@ -47,7 +48,7 @@ requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-ad-ctf-api-server = "ad_ctf_apis.server:main"
+ctf-attackapi-server = "attackapi.server:main"
 
 [dependency-groups]
 dev = [
@@ -56,8 +57,11 @@ dev = [
     "types-pyyaml>=6.0.12.20250915",
 ]
 
+[tool.uv.build-backend]
+module-name = "attackapi"
+
 [tool.mypy]
 python_version = "3.9"
 disallow_untyped_defs = true
-packages = ["ad_ctf_apis", "tests", "examples"]
+packages = ["attackapi", "tests", "examples"]
 mypy_path = ["./src", "./tests", "./examples"]

@@ -3,8 +3,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Union
 
-from ad_ctf_apis import AttackInfo
-from ad_ctf_apis.async_api import AdCtfApiAsync
+from attackapi import AttackInfo
+from attackapi.async_api import AdCtfApiAsync
 
 
 class AdCtfApiSync:

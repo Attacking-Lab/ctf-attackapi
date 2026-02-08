@@ -9,13 +9,13 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 from unittest.mock import patch
 
-from ad_ctf_apis.async_api import AdCtfApiAsync
+from attackapi.async_api import AdCtfApiAsync
 from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
 class ApiTestCase(BaseTestCase):
     def setUp(self) -> None:
-        from ad_ctf_apis.async_api.api import _api_response_cache
+        from attackapi.async_api.api import _api_response_cache
         _api_response_cache._cache.clear()
         self.tempdir = tempfile.TemporaryDirectory()
         self.api = AdCtfApiAsync("http://localhost/attack.json", self.tempdir.name)
@@ -42,7 +42,7 @@ class ApiTestCase(BaseTestCase):
             info = await self.api.attack_info()
 
             # clear caches
-            from ad_ctf_apis.async_api.api import _api_response_cache
+            from attackapi.async_api.api import _api_response_cache
             _api_response_cache._cache.clear()
             self.api = AdCtfApiAsync("http://localhost/attack.json", self.tempdir.name)
 
@@ -129,7 +129,7 @@ def process_reader(p: Path) -> None:
 
 
 def process_writer(p: Path) -> None:
-    from ad_ctf_apis.async_api.api import _atomic_write
+    from attackapi.async_api.api import _atomic_write
     for _ in range(100):
         _atomic_write(p, json.dumps({"ts": time.time()}).encode("utf-8"))
         time.sleep(0.01)

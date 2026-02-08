@@ -5,9 +5,9 @@ from typing import Any, Callable
 
 from aiohttp import web
 
-from ad_ctf_apis import AttackInfo
-from ad_ctf_apis.async_api import AdCtfApiAsync
-from ad_ctf_apis.server.docs import docs_html, openapi_path
+from attackapi import AttackInfo
+from attackapi.async_api import AdCtfApiAsync
+from attackapi.server.docs import docs_html, openapi_path
 
 
 class AdCtfServer(web.Application):

@@ -1,9 +1,9 @@
 import tempfile
 from typing import Optional, Any
 
-from ad_ctf_apis import AttackInfo
-from ad_ctf_apis.async_api import AdCtfApiAsync
-from ad_ctf_apis.sync_api import AdCtfApiSync
+from attackapi import AttackInfo
+from attackapi.async_api import AdCtfApiAsync
+from attackapi.sync_api import AdCtfApiSync
 
 _sync_api: Optional[AdCtfApiSync] = None
 _async_api: Optional[AdCtfApiAsync] = None

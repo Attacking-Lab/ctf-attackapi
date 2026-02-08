@@ -10,7 +10,7 @@ python full.py NOP        # attack team by name (if API has team names)
 import asyncio
 import sys
 
-from ad_ctf_apis.async_api import AdCtfApiAsync
+from attackapi.async_api import AdCtfApiAsync
 
 # Configure the caching API:
 api = AdCtfApiAsync(

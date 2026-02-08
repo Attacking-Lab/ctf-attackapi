@@ -1,5 +1,15 @@
-AD CTF API - Cached and Unified!
-================================
+CTF AttackAPI - Cached and Unified!
+===================================
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/license/mit)
+![Python](https://img.shields.io/pypi/pyversions/ctf-attackapi)
+![Types](https://img.shields.io/pypi/types/ctf-attackapi)
+TODO build status
+TODO coverage status
+[![PyPI version](https://img.shields.io/pypi/v/ctf-attackapi)](https://pypi.org/project/ctf-attackapi)
+![Downloads](https://img.shields.io/pypi/dm/ctf-attackapi)
+![Repo size](https://img.shields.io/github/repo-size/Attacking-Lab/ctf-attackapi)
+
 
 Gather attack information quickly in your attack-defense CTF exploits!
 
@@ -29,35 +39,35 @@ See [examples](./examples) directory for more full scripts.
 Install the package (possibly in a virtual environment):
 
 ```shell
-pip install ad-ctf-apis
+pip install ctf-attackapi
 ```
 
 Get attack infos for your python exploit:
 
 ```python
-from ad_ctf_apis import *
+from attackapi import *
 
 # 1. Set the API URL in code (or use CTF_API environment variable)
 configure("https://scoreboard.ctf.saarland/api/attack.json")
 # 2. Get attack infos!
 for username in attack_info().flag_id_flat("no-service", "10.32.1.2"):
-    pwn("10.32.1.2", username)
+  pwn("10.32.1.2", username)
 ```
 
 List all teams that you can attack:
 
 ```python
-from ad_ctf_apis import *
+from attackapi import *
 
 configure("https://scoreboard.ctf.saarland/api/attack.json")
 for team in attack_info().teams:
-    print(team.id, team.ip, team.name)
+  print(team.id, team.ip, team.name)
 ```
 
 Get attack infos from REST API if you're not pwning in Python:
 
 ```shell
-python -m ad_ctf_apis.server --url "https://scoreboard.ctf.saarland/api/attack.json"
+python -m attackapi.server --url "https://scoreboard.ctf.saarland/api/attack.json"
 curl "http://localhost:14320/api/v1/teams"
 ```
 
@@ -87,7 +97,7 @@ There are different ways to get an `AttackInfo` object:
 
 ```python
 # 1. Functional
-from ad_ctf_apis import *
+from attackapi import *
 
 # Set the API URL in code (or use CTF_API environment variable)
 configure("https://scoreboard.ctf.saarland/api/attack.json")
@@ -97,8 +107,8 @@ info: AttackInfo = attack_info()
 info: AttackInfo = await attack_info_async()
 
 # 2. By manually using the classes
-from ad_ctf_apis.sync_api import AdCtfApiSync
-from ad_ctf_apis.async_api import AdCtfApiAsync
+from attackapi.sync_api import AdCtfApiSync
+from attackapi.async_api import AdCtfApiAsync
 
 api = AdCtfApiSync("https://scoreboard.ctf.saarland/api/attack.json")
 info = api.attack_info()
@@ -145,7 +155,7 @@ Server Documentation
 
 ```shell
 # Simple usage:
-python -m ad_ctf_apis.server --help
+python -m attackapi.server --help
 ```
 
 Options:
@@ -158,8 +168,8 @@ Options:
 
 ```shell
 # Usage for higher load scenarios:
-pip install ad-ctf-apis[gunicorn]
-gunicorn ad_ctf_apis.server:create_app --bind :14320 --worker-class ad_ctf_apis.server.worker.MyGunicornWebWorker --workers 4
+pip install ctf-attackapi[gunicorn]
+gunicorn attackapi.server:create_app --bind :14320 --worker-class attackapi.server.worker.MyGunicornWebWorker --workers 4
 ```
 
 Environment variables:

@@ -14,7 +14,7 @@ from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from typing import Optional
 
-from ad_ctf_apis.models import AttackInfo, Team
+from attackapi.models import AttackInfo, Team
 
 
 @dataclass

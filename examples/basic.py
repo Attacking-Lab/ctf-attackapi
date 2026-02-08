@@ -7,7 +7,7 @@ python basic.py NOP        # attack team by name (if API has team names)
 """
 import sys
 
-from ad_ctf_apis import configure, attack_info
+from attackapi import configure, attack_info
 
 # Configure the caching API:
 configure("https://ctf.saarland/static/scoreboard/api/attack.json")  # or use CTF_API environment variable

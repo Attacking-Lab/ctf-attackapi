@@ -8,7 +8,7 @@ python basic_async.py NOP        # attack team by name (if API has team names)
 import asyncio
 import sys
 
-from ad_ctf_apis import configure, attack_info_async
+from attackapi import configure, attack_info_async
 
 # Configure the caching API:
 configure("https://ctf.saarland/static/scoreboard/api/attack.json")  # or use CTF_API environment variable
