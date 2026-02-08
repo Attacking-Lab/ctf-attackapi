@@ -1,6 +1,6 @@
 [project]
 name = "ctf-attackapi"
-version = "0.1.0"
+version = "0.1.1"
 description = "Get attack infos in attack-defense CTFs quickly to your exploits. CTF-agnostic and cached."
 readme = "README.md"
 license = "MIT"
