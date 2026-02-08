@@ -105,6 +105,23 @@ paths:
         '500':
           description: Internal server error
 
+  /api/v1/raw:
+    get:
+      summary: Get raw attack info JSON
+      description: |
+        Returns the complete raw attack information JSON as provided by the game API. 
+        Includes all teams and services. Not parsed, not preprocessed.
+      operationId: getRaw
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RawResponse'
+        '500':
+          description: Internal server error
+
 components:
   schemas:
     Team:
@@ -167,3 +184,7 @@ components:
             - type: object
           description: List of raw attack targets (e.g., usernames), format is determined by the game API
           example: { "227": "username1", "228": "username2", "229": "username3" }
+    RawResponse:
+      type: object
+      description: Raw attack information JSON as returned by the game API
+      additionalProperties: true

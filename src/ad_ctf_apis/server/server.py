@@ -14,6 +14,7 @@ class AdCtfServer(web.Application):
         self.add_routes([
             web.get("/", self.docs),
             web.get("/api.yaml", self.api_spec),
+            web.get("/api/v1/raw", self.get_raw),
             web.get("/api/v1/services", self.get_services),
             web.get("/api/v1/teams", self.get_teams),
             web.get("/api/v1/attack_info/{service}/{team}", self.get_attack_info),
@@ -25,6 +26,10 @@ class AdCtfServer(web.Application):
 
     async def api_spec(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(openapi_path())
+
+    async def get_raw(self, request: web.Request) -> web.Response:
+        info = await self._api.attack_info()
+        return web.Response(body=info.raw, content_type="application/json")
 
     async def get_teams(self, request: web.Request) -> web.Response:
         info = await self._api.attack_info()

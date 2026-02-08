@@ -81,7 +81,7 @@ class Decoder:
         self._dialect = dialect
 
     def parse(self, raw: bytes) -> AttackInfo:
-        info = AttackInfo()
+        info = AttackInfo(raw=raw)
         data = json.loads(raw)
         dialect = self._get_dialect(data)
 

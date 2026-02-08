@@ -32,6 +32,7 @@ class AttackInfo:
     team_lookup: dict[str, Team] = field(default_factory=dict)
     services: set[str] = field(default_factory=set)
     flag_ids: dict[str, dict[str, RawFlagIds]] = field(default_factory=dict)
+    raw: bytes = b""  # everything, as given by the game API
 
     def team(self, name: Union[str, int]) -> Optional[Team]:
         """

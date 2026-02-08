@@ -59,3 +59,38 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
             data = await resp.json()
             self.assertEqual(131, len(data["teams"]))
             self.assertIn("10.32.1.2", [team["ip"] for team in data["teams"]])
+
+    nop_ref = {
+        "227": "NecessaryHatefulMotel8424",
+        "228": "SecondhandNaiveArtificer424",
+        "229": "SleepyNonchalantResale945",
+        "230": "WoozyUnderwire4918",
+        "231": "AbundantOutgoingGelding8283",
+        "232": "JealousOutgoingWaistband7947",
+        "233": "UttermostIntelligentSpot6463",
+        "234": "BrownUgliestLemur377",
+        "235": "JealousJudiciousPolice9128",
+        "236": "GamyVersedSpider3593",
+        "237": "StingyWideCarpet9739"
+    }
+
+    async def test_attack_info(self) -> None:
+        ref = [self.nop_ref[k] for k in sorted(self.nop_ref.keys())]
+        for team in ("1", "nop", "10.32.1.2"):
+            async with self.client.request("GET", f"/api/v1/attack_info/licenser/{team}") as resp:
+                self.assertEqual(resp.status, 200)
+                data = await resp.json()
+                self.assertEqual(ref, data["attack_info"])
+
+    async def test_attack_info_raw(self) -> None:
+        for team in ("1", "nop", "10.32.1.2"):
+            async with self.client.request("GET", f"/api/v1/attack_info_raw/licenser/{team}") as resp:
+                self.assertEqual(resp.status, 200)
+                data = await resp.json()
+                self.assertEqual(self.nop_ref, data["attack_info"])
+
+    async def test_raw(self) -> None:
+        async with self.client.request("GET", "/api/v1/raw") as resp:
+            self.assertEqual(resp.status, 200)
+            data = await resp.json()
+            self.assertIn("flag_regex", data)
