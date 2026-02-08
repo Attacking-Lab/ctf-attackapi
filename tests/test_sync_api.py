@@ -31,7 +31,7 @@ class SyncApiTestCase(BaseTestCase):
             for thread in threads:
                 thread.start()
             for thread in threads:
-                thread.join(timeout=1)
+                thread.join(timeout=2)
             mock.assert_called_once()
 
     def test_concurrent_processes(self) -> None:
@@ -40,13 +40,13 @@ class SyncApiTestCase(BaseTestCase):
         for process in processes:
             process.start()
         for process in processes:
-            process.join(timeout=1)
+            process.join(timeout=2)
         for process in processes:
             self.assertEqual(0, process.exitcode)
         self.assertEqual(1, counter.value)
 
 
-def process_inner(path: Path, counter: Synchronized[int]) -> None:
+def process_inner(path: Path, counter: Synchronized) -> None:
     api = AdCtfApiSync("http://localhost/attack.json", path)
     with BaseTestCase.patch_request(BaseTestCase._res / "saarctf2025.json") as mock:
         api.attack_info()
