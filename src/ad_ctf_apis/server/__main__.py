@@ -14,9 +14,11 @@ def main() -> None:
                         help="API url to get CTF info from.")
     parser.add_argument("--tmp-directory", type=str, default=tempfile.gettempdir(),
                         help="Cache directory")
+    parser.add_argument("--lifetime", type=float, default=30.0, help="Lifetime of cached data in seconds")
+    parser.add_argument("--timeout", type=float, default=10.0, help="Timeout for API calls in seconds")
     args = parser.parse_args()
 
-    api = AdCtfApiAsync(args.url, args.tmp_directory)
+    api = AdCtfApiAsync(args.url, args.tmp_directory, lifetime=args.lifetime, timeout=args.timeout)
     app = AdCtfServer(api)
     web.run_app(app, port=args.port)
 
