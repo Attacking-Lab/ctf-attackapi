@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from attackapi.async_api import AdCtfApiAsync
+from attackapi.async_api.api import FileCache
 from .utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
@@ -93,6 +94,7 @@ class ApiTestCase(BaseTestCase):
         processes = [
             Process(target=process_reader, args=(p,)),
             Process(target=process_reader, args=(p,)),
+            Process(target=process_reader_slow, args=(p,)),
             Process(target=process_writer, args=(p,))
         ]
         for process in processes:
@@ -125,6 +127,15 @@ def process_reader(p: Path) -> None:
     deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
         json.loads(p.read_bytes())
+        time.sleep(0.001)
+
+
+def process_reader_slow(p: Path) -> None:
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        with p.open("rb") as f:
+            time.sleep(0.02)
+            json.loads(f.read())
         time.sleep(0.001)
 
 
