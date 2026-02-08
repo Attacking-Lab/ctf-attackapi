@@ -2,12 +2,12 @@ CTF AttackAPI - Cached and Unified!
 ===================================
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/license/mit)
-![Python](https://img.shields.io/pypi/pyversions/ctf-attackapi)
-![Types](https://img.shields.io/pypi/types/ctf-attackapi)
+![Python](https://img.shields.io/pypi/pyversions/ctf-attackapi?pypiBaseUrl=https://test.pypi.org)
+![Types](https://img.shields.io/pypi/types/ctf-attackapi?pypiBaseUrl=https://test.pypi.org)
 TODO build status
 TODO coverage status
-[![PyPI version](https://img.shields.io/pypi/v/ctf-attackapi)](https://pypi.org/project/ctf-attackapi)
-![Downloads](https://img.shields.io/pypi/dm/ctf-attackapi)
+[![PyPI version](https://img.shields.io/pypi/v/ctf-attackapi?pypiBaseUrl=https://test.pypi.org)](https://pypi.org/project/ctf-attackapi)
+![Downloads](https://img.shields.io/pypi/dm/ctf-attackapi?pypiBaseUrl=https://test.pypi.org)
 ![Repo size](https://img.shields.io/github/repo-size/Attacking-Lab/ctf-attackapi)
 
 
