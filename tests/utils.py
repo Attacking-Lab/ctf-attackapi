@@ -36,7 +36,7 @@ class BaseTestCase(IsolatedAsyncioTestCase):
 
     @staticmethod
     @contextmanager
-    def patch_request(f: Path) -> Generator[Mock]:
+    def patch_request(f: Path) -> Generator[Mock, None, None]:
         with patch("aiohttp.client.ClientSession.get") as mock:
             mock2 = MagicMock()
             mock.return_value = mock2
