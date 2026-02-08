@@ -1,3 +1,4 @@
+import json
 from typing import Any, Callable
 
 from aiohttp import web
@@ -22,7 +23,32 @@ class AdCtfServer(web.Application):
         ])
 
     async def docs(self, request: web.Request) -> web.Response:
-        return web.Response(text=docs_html(), content_type="text/html")
+        docs = docs_html()
+        docs = docs.replace('"http://localhost:14320"', json.dumps("http://" + request.host))
+        try:
+            info = await self._api.attack_info()
+            if len(info.services) > 0:
+                docs = docs.replace('"RCEaaS"', json.dumps(list(info.services)[0]))
+            if len(info.teams) > 0:
+                docs = docs.replace('"10.32.1.2"', json.dumps(info.teams[0].ip))
+                docs = docs.replace('"example": 1', '"example": ' + json.dumps(info.teams[0].id))
+                docs = docs.replace('"NOP"', json.dumps(info.teams[0].name))
+                if len(info.services) > 0:
+                    s = list(info.services)[0]
+                    raw = info.flag_id_raw(s, info.teams[0])
+                    flat = info.flag_id_flat(s, info.teams[0])
+                    if raw:
+                        docs = docs.replace(
+                            json.dumps({"227": "username1", "228": "username2", "229": "username3"}),
+                            json.dumps(raw)
+                        )
+                        docs = docs.replace(
+                            json.dumps(["username1", "username2", "username3"]),
+                            json.dumps(flat)
+                        )
+        except:  # noqa
+            pass
+        return web.Response(text=docs, content_type="text/html")
 
     async def api_spec(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(openapi_path())
