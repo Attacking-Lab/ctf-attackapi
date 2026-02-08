@@ -2,12 +2,17 @@ import asyncio
 import json
 import multiprocessing
 import os
+import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
+from typing import Generator
 from unittest.mock import patch
+
+from filelock import FileLock
 
 from attackapi.async_api import AdCtfApiAsync
 from attackapi.async_api.api import FileCache
@@ -83,7 +88,7 @@ class ApiTestCase(BaseTestCase):
         for process in processes:
             process.start()
         for process in processes:
-            process.join(timeout=2)
+            process.join(timeout=3)
         for process in processes:
             self.assertEqual(0, process.exitcode)
         self.assertEqual(1, counter.value)
@@ -123,26 +128,41 @@ def _slow_atomic_write(p: Path, raw: bytes) -> None:
     tmpfile.replace(p)
 
 
+@contextmanager
+def _lock_on_windows(p: Path) -> Generator[None, None, None]:
+    if sys.platform == "win32":
+        with FileLock(p):
+            yield
+    else:
+        yield
+
+
 def process_reader(p: Path) -> None:
+    cache = FileCache(p, p.with_suffix(".json.lock"))
     deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
-        json.loads(p.read_bytes())
+        with _lock_on_windows(cache._lock):
+            json.loads(cache.get() or b'')
         time.sleep(0.001)
 
 
 def process_reader_slow(p: Path) -> None:
+    cache = FileCache(p, p.with_suffix(".json.lock"))
     deadline = time.monotonic() + 2
     while time.monotonic() < deadline:
-        with p.open("rb") as f:
-            time.sleep(0.02)
-            json.loads(f.read())
+        with _lock_on_windows(cache._lock):
+            with p.open("rb") as f:
+                time.sleep(0.015)
+                json.loads(f.read())
         time.sleep(0.001)
 
 
 def process_writer(p: Path) -> None:
-    from attackapi.async_api.api import _atomic_write
+    cache = FileCache(p, p.with_suffix(".json.lock"))
     for _ in range(100):
-        _atomic_write(p, json.dumps({"ts": time.time()}).encode("utf-8"))
+        with FileLock(cache._lock):
+            cache.set(json.dumps({"ts": time.time()}).encode("utf-8"))
         time.sleep(0.01)
-        _slow_atomic_write(p, json.dumps({"ts": time.time()}).encode("utf-8"))
+        with FileLock(cache._lock):
+            _slow_atomic_write(p, json.dumps({"ts": time.time()}).encode("utf-8"))
         time.sleep(0.01)

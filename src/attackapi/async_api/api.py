@@ -1,5 +1,6 @@
 import hashlib
 import os
+import sys
 import tempfile
 import time
 from importlib.metadata import version
@@ -42,10 +43,9 @@ _api_response_cache: GlobalCache[AttackInfo] = GlobalCache()
 
 
 class FileCache:
-    def __init__(self, path: Path, lock: Path, decoder: Decoder) -> None:
+    def __init__(self, path: Path, lock: Path) -> None:
         self._path = path
         self._lock = lock
-        self._decoder = decoder
 
     def age(self) -> Optional[float]:
         try:
@@ -53,15 +53,19 @@ class FileCache:
         except FileNotFoundError:
             return None
 
-    def get(self) -> Optional[AttackInfo]:
+    def get(self) -> Optional[bytes]:
+        """
+        On Linux: not necessary to have the lock()
+        On Windows: Must only be called while the lock() is taken
+        """
         try:
-            # TODO check what happens on concurrent read/writes on Windows!
-            return self._decoder.parse(self._path.read_bytes())
+            return self._path.read_bytes()
         except FileNotFoundError:
             pass
         return None
 
     def set(self, value: bytes) -> None:
+        """Must only be called while the lock() is taken"""
         _atomic_write(self._path, value)
 
     def lock(self) -> AsyncContextManager[None]:
@@ -114,8 +118,7 @@ class AdCtfApiAsync:
         self._cache_key = hashlib.sha256(url.encode()).hexdigest()[:12]
         self._file_cache = FileCache(
             Path(tmp_directory) / f"ctf-{self._cache_key}.json",
-            Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock",
-            self._decoder
+            Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
         )
 
     async def attack_info(self) -> AttackInfo:
@@ -145,14 +148,19 @@ class AdCtfApiAsync:
 
     def _check_file_cache(self) -> Optional[AttackInfo]:
         if (age := self._file_cache.age()) is not None and age <= self._lifetime:
-            return self._file_cache.get()
+            raw = self._file_cache.get()
+            if raw is not None:
+                return self._decoder.parse(raw)
         return None
 
     async def _attack_info_from_file(self) -> AttackInfo:
         # Step 2: try to load from file
-        info = self._check_file_cache()
-        if info is not None:
-            return info
+        # this does not work on Windows, because concurrent read + replacing files is not possible.
+        # for better performance please use Linux
+        if sys.argv != "win32":
+            info = self._check_file_cache()
+            if info is not None:
+                return info
         # not found? lock it to avoid concurrent API requests
         async with self._file_cache.lock():
             # recheck to avoid race conditions
