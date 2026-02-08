@@ -1,7 +1,7 @@
 [project]
 name = "ad-ctf-apis"
 version = "0.1.0"
-description = "Add your description here"
+description = "Get attack infos in attack-defense CTFs quickly to your exploits. CTF-agnostic and cached."
 readme = "README.md"
 authors = [
     { name = "Markus Bauer", email = "markus.bauer@cispa.saarland" }

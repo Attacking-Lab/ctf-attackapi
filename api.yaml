@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: AD CTF API Wrapper
+  description: REST API for attack-defense CTF attack information, fully cached
+  version: 0.1.0
+servers:
+  - url: http://localhost:14320
+    description: Your local server instance
+paths:
+  /api/v1/services:
+    get:
+      summary: Get list of services
+      description: Returns a list of all services with flag infos in the CTF
+      operationId: getServices
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicesResponse'
+        '500':
+          description: Internal server error
+  
+  /api/v1/teams:
+    get:
+      summary: Get list of teams
+      description: Returns a list of all attackable teams in the CTF
+      operationId: getTeams
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamsResponse'
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    Team:
+      type: object
+      required:
+        - ip
+      properties:
+        id:
+          type: integer
+          description: Team ID
+          example: 1
+        ip:
+          type: string
+          description: Team IP address
+          example: "10.32.1.2"
+        name:
+          type: string
+          nullable: true
+          description: Team name, if available
+          example: "NOP"
+    TeamsResponse:
+      type: object
+      required:
+        - teams
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+    ServicesResponse:
+      type: object
+      required:
+        - services
+      properties:
+        services:
+          type: array
+          items:
+            type: string
+          description: List of service names
+          example: [ "Licenser", "asm_chat" ]

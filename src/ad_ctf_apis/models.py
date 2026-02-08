@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, Union, Any, cast
 from typing_extensions import TypeAlias
 
@@ -21,6 +21,9 @@ class Team:
     id: int
     ip: str
     name: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 @dataclass(frozen=True)
