@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 from typing import Any, Callable
 
 from aiohttp import web
@@ -90,3 +92,14 @@ class AdCtfServer(web.Application):
             return info.flag_id_raw(service, team)
 
         return await self._attack_info_common(request, _cb)
+
+
+async def create_app() -> web.Application:
+    """Create the app for gunicorn"""
+    api = AdCtfApiAsync(
+        url=os.environ["CTF_API"],
+        tmp_directory=os.environ.get("CTF_API_TMP_DIR", tempfile.gettempdir()),
+        lifetime=float(os.environ.get("CTF_API_LIFETIME", 30.0)),
+        timeout=float(os.environ.get("CTF_API_TIMEOUT", 10.0))
+    )
+    return AdCtfServer(api)

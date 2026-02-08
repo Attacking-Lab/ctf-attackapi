@@ -8,10 +8,15 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "aiohttp>=3.10.11",
+    "aiohttp>=3.13.3",
     "aiologic>=0.16.0",
     "filelock>=3.19.1",
     "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+server = [
+    "gunicorn>=23.0.0",
 ]
 
 [build-system]
@@ -29,4 +34,4 @@ dev = [
 python_version = "3.9"
 disallow_untyped_defs = true
 packages = ["ad_ctf_apis", "tests", "examples"]
-mypy_path = ["./src", "./tests", "./scripts", "./examples"]
+mypy_path = ["./src", "./tests", "./examples"]

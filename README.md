@@ -107,10 +107,10 @@ Optional parameters can be passed to the `configure` function or the API constru
 - `timeout: float` (default: 10 seconds) - abort game API requests after this duration
 - `decoder: Decoder` (default: generic decoder) - custom decoder, if your game's format is different from what we've
   seen so far
-- `aiohttp_arguments: dict` - additional arguments passed to the aiohttp Session which contacts the game API 
-
+- `aiohttp_arguments: dict` - additional arguments passed to the aiohttp Session which contacts the game API
 
 The `AttackInfo` class itself has these methods:
+
 ```python
 info: AttackInfo
 
@@ -133,17 +133,31 @@ print(info.flag_id_flat("servicename", "10.32.1.2"))
 # => ["abc", "def"]
 ```
 
-
 Server Documentation
 --------------------
+
 ```shell
+# Simple usage:
 python -m ad_ctf_apis.server --help
 ```
 
 Options:
+
 - `--port PORT`
 - `--url URL`: API url to get CTF info from.
 - `--tmp-directory TMP_DIRECTORY`: Cache directory
 - `--lifetime LIFETIME`: Lifetime of cached data in seconds
 - `--timeout TIMEOUT`: Timeout for API calls in seconds
 
+```shell
+# Usage for higher load scenarios:
+pip install ad-ctf-apis[gunicorn]
+gunicorn ad_ctf_apis.server:create_app --bind :14320 --worker-class ad_ctf_apis.server.worker.MyGunicornWebWorker --workers 4
+```
+
+Environment variables:
+
+- `CTF_API`: URL to get CTF info from.
+- `CTF_API_TMP_DIR`: Cache directory (gunicorn only)
+- `CTF_API_LIFETIME`: Lifetime of cached data in seconds (gunicorn only)
+- `CTF_API_TIMEOUT`: Timeout for API calls in seconds (gunicorn only)
