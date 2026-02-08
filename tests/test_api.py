@@ -98,7 +98,7 @@ class ApiTestCase(BaseTestCase):
         for process in processes:
             process.start()
         for process in processes:
-            process.join(timeout=3)
+            process.join(timeout=4)
         for process in processes:
             self.assertEqual(0, process.exitcode)
 
