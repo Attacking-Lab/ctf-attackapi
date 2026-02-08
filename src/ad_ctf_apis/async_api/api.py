@@ -58,6 +58,16 @@ class AdCtfApiAsync:
     def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
                  lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
                  aiohttp_arguments: Optional[dict] = None) -> None:
+        """
+        Create a new API client.
+
+        :param url: URL of your game's API (defaults to environment variable CTF_API)
+        :param tmp_directory: where to store cache files
+        :param lifetime: How long to cache data for (in seconds)
+        :param timeout: How long to wait for API calls (in seconds)
+        :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
+        :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        """
         if not url:
             if "CTF_API" not in os.environ:
                 raise Exception("Please call configure() or set CTF_API environment variable!")
@@ -77,6 +87,10 @@ class AdCtfApiAsync:
         self._lock_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
 
     async def attack_info(self) -> AttackInfo:
+        """
+        Get the current attack info. Either from cache, from disk, or from game API.
+        This method might fail with aiohttp exceptions.
+        """
         # Step 1: check in-process cache
         info = self._check_memory_cache()
         if info is not None:

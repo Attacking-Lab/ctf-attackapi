@@ -19,6 +19,7 @@ from ad_ctf_apis.models import AttackInfo, Team
 
 @dataclass
 class Dialect(ABC):
+    """ID/IP foo for the different games."""
     name: str
     ip_pattern: Optional[str] = None  # format string to get IP from ID
 
@@ -77,10 +78,23 @@ DIALECTS = [
 
 
 class Decoder:
+    """
+    A decoder converts the game APIs response (in bytes) into teams, services, and attack information.
+    """
+
     def __init__(self, dialect: Optional[Dialect] = None) -> None:
+        """
+        :param dialect: auto-inferred by default
+        """
         self._dialect = dialect
 
     def parse(self, raw: bytes) -> AttackInfo:
+        """
+        Converts game API response to attack infos.
+        :param raw:
+        :raises ValueError: If data is invalid
+        :return:
+        """
         info = AttackInfo(raw=raw)
         data = json.loads(raw)
         dialect = self._get_dialect(data)

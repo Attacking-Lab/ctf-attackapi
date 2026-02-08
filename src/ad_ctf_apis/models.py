@@ -18,6 +18,11 @@ def _flat(flag_ids: Any) -> list[str]:
 
 @dataclass(frozen=True)
 class Team:
+    """
+    An attackable team.
+    IP is given for every game, ID is given or inferred for all known CTFs.
+    Name is not present everywhere.
+    """
     id: int
     ip: str
     name: Optional[str] = None
@@ -28,6 +33,12 @@ class Team:
 
 @dataclass(frozen=True)
 class AttackInfo:
+    """
+    Container for all attack info parsed from the game API.
+    Use methods team(), flag_id_raw(), and flag_id_flat() to look up data.
+    Fields teams and services can be iterated.
+    """
+
     teams: list[Team] = field(default_factory=list)
     team_lookup: dict[str, Team] = field(default_factory=dict)
     services: set[str] = field(default_factory=set)
