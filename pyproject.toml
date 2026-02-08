@@ -5,7 +5,7 @@ description = "Get attack infos in attack-defense CTFs quickly to your exploits.
 readme = "README.md"
 license = "MIT"
 license_files = ["LICENSE.txt"]
-keywords = ["Attack-Defense", "CTF", "Attack API", "Attack Info", "Flag IDs", "FaustCTF", "ENOwars", "saarCTF"]
+keywords = ["Attack-Defense", "CTF", "Attack API", "Attack Info", "Flag IDs", "FAUST CTF", "ENOWARS", "saarCTF"]
 authors = [
     { name = "Markus Bauer", email = "markus.bauer@cispa.saarland" }
 ]

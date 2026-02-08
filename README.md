@@ -27,8 +27,8 @@ Features
 - Direct access from your Python exploits ([sync](./examples/basic.py) or [async](./examples/basic_async.py))
 - Optional REST API for exploits in other languages (with [OpenAPI spec](./api.yaml))
 - Unifies team, IP, and flag info lookup between different CTFs:
-    - Supports [ENOwars](https://enowars.com)
-    - Supports [FaustCTF](https://faustctf.net)
+    - Supports [ENOWARS](https://enowars.com)
+    - Supports [FAUST CTF](https://faustctf.net)
     - Supports [saarCTF](https://ctf.saarland) (including ECSC gameserver)
 
 Quick-Start
