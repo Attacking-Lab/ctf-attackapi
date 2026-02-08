@@ -14,7 +14,7 @@ Features
 --------
 - Efficient caching between threads or processes
 - Direct access from your Python exploits (sync or async)
-- Optional REST API for exploits in other languages
+- Optional REST API for exploits in other languages (with OpenAPI spec)
 - Unifies team, IP, and flag info lookup between different CTFs:
   - Supports [ENOwars](https://enowars.com)
   - Supports [FaustCTF](https://faustctf.net)
@@ -23,7 +23,7 @@ Features
 
 Quick-Start
 -----------
-See [examples](./examples) for more full scripts.
+See [examples](./examples) directory for more full scripts.
 
 Install the package (possibly in a virtual environment):
 ```shell
@@ -50,8 +50,9 @@ for team in attack_info().teams:
     print(team.id, team.ip, team.name)
 ```
 
-Get attack infos from REST API:
+Get attack infos from REST API if you're not pwning in Python:
 ```shell
 python -m ad_ctf_apis.server --url "https://scoreboard.ctf.saarland/api/attack.json"
 curl "http://localhost:14320/api/v1/teams"
 ```
+The server has documentation on its frontpage, and here is [the OpenAPI specification](./api.yaml).
