@@ -1,5 +1,5 @@
-AD CTF Common API
-=================
+AD CTF API - Cached and Unified!
+================================
 
 Gather attack information quickly in your attack-defense CTF exploits!
 

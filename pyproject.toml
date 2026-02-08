@@ -3,10 +3,26 @@ name = "ad-ctf-apis"
 version = "0.1.0"
 description = "Get attack infos in attack-defense CTFs quickly to your exploits. CTF-agnostic and cached."
 readme = "README.md"
+license = "MIT"
+license_files = ["LICENSE.txt"]
+keywords = ["Attack-Defense", "CTF", "Attack Info", "Flag IDs", "FaustCTF", "ENOwars", "saarCTF"]
 authors = [
     { name = "Markus Bauer", email = "markus.bauer@cispa.saarland" }
 ]
 requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+]
 dependencies = [
     "aiohttp>=3.13.3",
     "aiologic>=0.16.0",
@@ -20,9 +36,18 @@ server = [
     "gunicorn>=23.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Attacking-Lab/ad-ctf-apis"
+Repository = "https://github.com/Attacking-Lab/ad-ctf-apis"
+Issues = "https://github.com/Attacking-Lab/ad-ctf-apis/issues"
+Background = "https://wiki.attacking-lab.com/attack-defense/"
+
 [build-system]
 requires = ["uv_build>=0.9.27,<0.10.0"]
 build-backend = "uv_build"
+
+[project.scripts]
+ad-ctf-api-server = "ad_ctf_apis.server:main"
 
 [dependency-groups]
 dev = [
