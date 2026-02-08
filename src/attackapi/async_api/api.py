@@ -4,7 +4,7 @@ import tempfile
 import time
 from importlib.metadata import version
 from pathlib import Path
-from typing import Optional, Union, Generic, TypeVar
+from typing import Optional, Union, Generic, TypeVar, AsyncContextManager
 
 import aiologic
 from aiohttp import ClientSession, ClientTimeout
@@ -39,6 +39,33 @@ class GlobalCache(Generic[T]):
 
 
 _api_response_cache: GlobalCache[AttackInfo] = GlobalCache()
+
+
+class FileCache:
+    def __init__(self, path: Path, lock: Path, decoder: Decoder) -> None:
+        self._path = path
+        self._lock = lock
+        self._decoder = decoder
+
+    def age(self) -> Optional[float]:
+        try:
+            return time.time() - self._path.stat().st_mtime
+        except FileNotFoundError:
+            return None
+
+    def get(self) -> Optional[AttackInfo]:
+        try:
+            # TODO check what happens on concurrent read/writes on Windows!
+            return self._decoder.parse(self._path.read_bytes())
+        except FileNotFoundError:
+            pass
+        return None
+
+    def set(self, value: bytes) -> None:
+        _atomic_write(self._path, value)
+
+    def lock(self) -> AsyncContextManager[None]:
+        return acquire_filelock(FileLock(self._lock))
 
 
 def _atomic_write(p: Path, raw: bytes) -> None:
@@ -85,8 +112,11 @@ class AdCtfApiAsync:
             "headers": {"User-Agent": "python/attackapi " + version("ctf-attackapi")}
         }
         self._cache_key = hashlib.sha256(url.encode()).hexdigest()[:12]
-        self._cache_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json"
-        self._lock_file = Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
+        self._file_cache = FileCache(
+            Path(tmp_directory) / f"ctf-{self._cache_key}.json",
+            Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock",
+            self._decoder
+        )
 
     async def attack_info(self) -> AttackInfo:
         """
@@ -114,13 +144,8 @@ class AdCtfApiAsync:
         return None
 
     def _check_file_cache(self) -> Optional[AttackInfo]:
-        try:
-            age = time.time() - self._cache_file.stat().st_mtime
-            if age <= self._lifetime:
-                # TODO check what happens on concurrent read/writes on Windows!
-                return self._decoder.parse(self._cache_file.read_bytes())
-        except FileNotFoundError:
-            pass
+        if (age := self._file_cache.age()) is not None and age <= self._lifetime:
+            return self._file_cache.get()
         return None
 
     async def _attack_info_from_file(self) -> AttackInfo:
@@ -129,8 +154,7 @@ class AdCtfApiAsync:
         if info is not None:
             return info
         # not found? lock it to avoid concurrent API requests
-        lock = FileLock(self._lock_file)
-        async with acquire_filelock(lock):
+        async with self._file_cache.lock():
             # recheck to avoid race conditions
             info = self._check_file_cache()
             if info is not None:
@@ -139,7 +163,7 @@ class AdCtfApiAsync:
             raw = await self._attack_info_from_remote()
             info = self._decoder.parse(raw)
             # and save to file (atomic)
-            _atomic_write(self._cache_file, raw)
+            self._file_cache.set(raw)
             return info
 
     async def _attack_info_from_remote(self) -> bytes:
