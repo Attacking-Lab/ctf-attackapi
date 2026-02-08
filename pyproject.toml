@@ -22,6 +22,7 @@ build-backend = "uv_build"
 dev = [
     "mypy>=1.19.1",
     "pytest>=8.4.2",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 
 [tool.mypy]

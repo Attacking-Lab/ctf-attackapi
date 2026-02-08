@@ -1,8 +1,8 @@
 import re
 import tempfile
-import tomllib
 from pathlib import Path
 
+from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
 
 from ad_ctf_apis.async_api import AdCtfApiAsync
@@ -18,14 +18,17 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
         _api_response_cache._cache.clear()
         self.tempdir = tempfile.TemporaryDirectory()
         self.api = AdCtfApiAsync("http://localhost/attack.json", self.tempdir.name)
-        self.enterContext(self.patch_request(self._res / "saarctf2025.json"))
+        self.ctx = self.patch_request(self._res / "saarctf2025.json")
+        self.mock = self.ctx.__enter__()
         super().setUp()
 
     def tearDown(self) -> None:
+        if self.ctx:
+            self.ctx.__exit__(None, None, None)
         self.tempdir.cleanup()
         super().tearDown()
 
-    async def get_application(self):
+    async def get_application(self) -> web.Application:
         return AdCtfServer(self.api)
 
     def test_version(self) -> None:
@@ -34,7 +37,7 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
         package_version = re.findall(r'version = "(.*?)"', text)[0]
         self.assertEqual(api_version, package_version)
 
-    async def test_docs(self):
+    async def test_docs(self) -> None:
         async with self.client.request("GET", "/") as resp:
             self.assertEqual(resp.status, 200)
             text = await resp.text()
@@ -44,13 +47,13 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
             text = await resp.text()
             self.assertIn("AD CTF API", text)
 
-    async def test_services(self):
+    async def test_services(self) -> None:
         async with self.client.request("GET", "/api/v1/services") as resp:
             self.assertEqual(resp.status, 200)
             data = await resp.json()
             self.assertIn("Licenser", data["services"])
 
-    async def test_teams(self):
+    async def test_teams(self) -> None:
         async with self.client.request("GET", "/api/v1/teams") as resp:
             self.assertEqual(resp.status, 200)
             data = await resp.json()

@@ -1,5 +1,5 @@
 import tempfile
-from typing import Optional
+from typing import Optional, Any
 
 from ad_ctf_apis import AttackInfo
 from ad_ctf_apis.async_api import AdCtfApiAsync
@@ -9,7 +9,7 @@ _sync_api: Optional[AdCtfApiSync] = None
 _async_api: Optional[AdCtfApiAsync] = None
 
 
-def configure(url: str = "", tmp_directory: str = tempfile.gettempdir(), **kwargs) -> None:
+def configure(url: str = "", tmp_directory: str = tempfile.gettempdir(), **kwargs: Any) -> None:
     global _sync_api, _async_api
     _sync_api = AdCtfApiSync(url, tmp_directory, **kwargs)
     _async_api = AdCtfApiAsync(url, tmp_directory, **kwargs)

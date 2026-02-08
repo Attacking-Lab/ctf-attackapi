@@ -1,7 +1,8 @@
-from typing import Any
+from typing import Any, Callable
 
 from aiohttp import web
 
+from ad_ctf_apis import AttackInfo
 from ad_ctf_apis.async_api import AdCtfApiAsync
 from ad_ctf_apis.server.docs import docs_html, openapi_path
 
@@ -15,6 +16,8 @@ class AdCtfServer(web.Application):
             web.get("/api.yaml", self.api_spec),
             web.get("/api/v1/services", self.get_services),
             web.get("/api/v1/teams", self.get_teams),
+            web.get("/api/v1/attack_info/{service}/{team}", self.get_attack_info),
+            web.get("/api/v1/attack_info_raw/{service}/{team}", self.get_attack_info_raw),
         ])
 
     async def docs(self, request: web.Request) -> web.Response:
@@ -30,3 +33,29 @@ class AdCtfServer(web.Application):
     async def get_services(self, request: web.Request) -> web.Response:
         info = await self._api.attack_info()
         return web.json_response({"services": list(info.services)})
+
+    async def _attack_info_common(self, request: web.Request,
+                                  cb: Callable[[AttackInfo, str, str], Any]) -> web.Response:
+        service = request.match_info["service"]
+        team = request.match_info["team"]
+        if not service or not team:
+            raise web.HTTPBadRequest(reason="Invalid team or service")
+        info = await self._api.attack_info()
+        if service.lower() not in info.flag_ids:
+            raise web.HTTPBadRequest(reason=f"Unknown service, or service has no attack info: {service}")
+        flag_ids = cb(info, service, team)
+        return web.json_response(
+            {"attack_info": flag_ids}
+        )
+
+    async def get_attack_info(self, request: web.Request) -> web.Response:
+        def _cb(info: AttackInfo, service: str, team: str) -> Any:
+            return info.flag_id_flat(service, team)
+
+        return await self._attack_info_common(request, _cb)
+
+    async def get_attack_info_raw(self, request: web.Request) -> web.Response:
+        def _cb(info: AttackInfo, service: str, team: str) -> Any:
+            return info.flag_id_raw(service, team)
+
+        return await self._attack_info_common(request, _cb)

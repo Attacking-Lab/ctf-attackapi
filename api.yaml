@@ -36,6 +36,75 @@ paths:
                 $ref: '#/components/schemas/TeamsResponse'
         '500':
           description: Internal server error
+
+  /api/v1/attack_info/{service}/{team}:
+    get:
+      summary: Get the simplified attack info for a service and team
+      description: |
+        Returns simple attack information (e.g., usernames) as string array for a specific service and team combination.
+        In contrast to /api/v1/attack_info_raw, this data is consistent for all supported CTFs.
+      operationId: getAttackInfo
+      parameters:
+        - name: service
+          in: path
+          required: true
+          description: Service name, case insensitive
+          schema:
+            type: string
+          example: "RCEaaS"
+        - name: team
+          in: path
+          required: true
+          description: Team identifier (IP address, ID, or name if given)
+          schema:
+            type: string
+          example: "10.32.1.2"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttackInfoResponse'
+        '400':
+          description: Invalid team or service
+        '500':
+          description: Internal server error
+
+  /api/v1/attack_info_raw/{service}/{team}:
+    get:
+      summary: Get raw attack info for a service and team
+      description: |
+        Returns raw attack information (e.g., usernames) as given by the game API for a specific service and team combination.
+        In contrast to /api/v1/attack_info, raw data preserves more details like tick and order.
+      operationId: getAttackInfoRaw
+      parameters:
+        - name: service
+          in: path
+          required: true
+          description: Service name, case insensitive
+          schema:
+            type: string
+          example: "RCEaaS"
+        - name: team
+          in: path
+          required: true
+          description: Team identifier (IP address, ID, or name if given)
+          schema:
+            type: string
+          example: "10.32.1.2"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttackInfoRawResponse'
+        '400':
+          description: Invalid team or service
+        '500':
+          description: Internal server error
+
 components:
   schemas:
     Team:
@@ -75,4 +144,26 @@ components:
           items:
             type: string
           description: List of service names
-          example: [ "Licenser", "asm_chat" ]
+          example: [ "Licenser", "RCEaaS" ]
+    AttackInfoResponse:
+      type: object
+      required:
+        - attack_info
+      properties:
+        attack_info:
+          type: array
+          items:
+            type: string
+          description: List of attack targets as string list
+          example: [ "username1", "username2", "username3" ]
+    AttackInfoRawResponse:
+      type: object
+      required:
+        - attack_info
+      properties:
+        attack_info:
+          oneOf:
+            - type: array
+            - type: object
+          description: List of raw attack targets (e.g., usernames), format is determined by the game API
+          example: { "227": "username1", "228": "username2", "229": "username3" }
