@@ -4,14 +4,15 @@ from pathlib import Path
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
+from aiohttp.web_app import Application
 
 from attackapi.async_api import AdCtfApiAsync
 from attackapi.server.docs import docs_json
-from attackapi.server.server import AdCtfServer
-from tests.utils import BaseTestCase
+from attackapi.server.server import AttackApiViews
+from .utils import BaseTestCase
 
 
-class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
+class ServerTestCase(AioHTTPTestCase, BaseTestCase):
 
     def setUp(self) -> None:
         from attackapi.async_api.api import _api_response_cache
@@ -29,7 +30,9 @@ class MyAppTestCase(AioHTTPTestCase, BaseTestCase):
         super().tearDown()
 
     async def get_application(self) -> web.Application:
-        return AdCtfServer(self.api)
+        app = Application()
+        app.add_routes(AttackApiViews(self.api).routes())
+        return app
 
     def test_version(self) -> None:
         api_version = docs_json()["info"]["version"]

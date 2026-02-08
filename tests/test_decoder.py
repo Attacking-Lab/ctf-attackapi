@@ -4,7 +4,7 @@ import unittest
 
 from attackapi.async_api.decoders import Decoder
 from attackapi.models import Team
-from tests.utils import BaseTestCase
+from .utils import BaseTestCase
 
 
 class DecoderTestCase(BaseTestCase):

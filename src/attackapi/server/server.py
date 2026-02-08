@@ -10,11 +10,12 @@ from attackapi.async_api import AdCtfApiAsync
 from attackapi.server.docs import docs_html, openapi_path
 
 
-class AdCtfServer(web.Application):
-    def __init__(self, api: AdCtfApiAsync, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+class AttackApiViews:
+    def __init__(self, api: AdCtfApiAsync) -> None:
         self._api = api
-        self.add_routes([
+
+    def routes(self) -> list[web.RouteDef]:
+        return [
             web.get("/", self.docs),
             web.get("/api.yaml", self.api_spec),
             web.get("/api/v1/raw", self.get_raw),
@@ -22,7 +23,7 @@ class AdCtfServer(web.Application):
             web.get("/api/v1/teams", self.get_teams),
             web.get("/api/v1/attack_info/{service}/{team}", self.get_attack_info),
             web.get("/api/v1/attack_info_raw/{service}/{team}", self.get_attack_info_raw),
-        ])
+        ]
 
     async def docs(self, request: web.Request) -> web.Response:
         docs = docs_html()
@@ -102,4 +103,7 @@ async def create_app() -> web.Application:
         lifetime=float(os.environ.get("CTF_API_LIFETIME", 30.0)),
         timeout=float(os.environ.get("CTF_API_TIMEOUT", 10.0))
     )
-    return AdCtfServer(api)
+    views = AttackApiViews(api)
+    app = web.Application()
+    app.add_routes(views.routes())
+    return app

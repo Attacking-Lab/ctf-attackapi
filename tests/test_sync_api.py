@@ -6,7 +6,7 @@ from pathlib import Path
 from threading import Thread
 
 from attackapi.sync_api import AdCtfApiSync
-from tests.utils import BaseTestCase
+from .utils import BaseTestCase
 
 
 class SyncApiTestCase(BaseTestCase):

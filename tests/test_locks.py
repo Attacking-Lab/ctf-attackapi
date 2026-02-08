@@ -8,7 +8,7 @@ import aiologic
 from filelock import FileLock
 
 from attackapi.async_api.filelock import acquire_filelock
-from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
+from .utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
 class LocksTestCase(BaseTestCase):

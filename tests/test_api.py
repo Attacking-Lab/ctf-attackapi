@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from attackapi.async_api import AdCtfApiAsync
-from tests.utils import BaseTestCase, AsyncThread, AsyncProcess
+from .utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
 class ApiTestCase(BaseTestCase):

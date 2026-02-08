@@ -2,9 +2,10 @@ import argparse
 import tempfile
 
 from aiohttp import web
+from aiohttp.web_app import Application
 
 from attackapi.async_api import AdCtfApiAsync
-from attackapi.server.server import AdCtfServer
+from attackapi.server.server import AttackApiViews
 
 
 def main() -> None:
@@ -19,7 +20,8 @@ def main() -> None:
     args = parser.parse_args()
 
     api = AdCtfApiAsync(args.url, args.tmp_directory, lifetime=args.lifetime, timeout=args.timeout)
-    app = AdCtfServer(api)
+    app = Application()
+    app.add_routes(AttackApiViews(api).routes())
     web.run_app(app, port=args.port)
 
 
