@@ -1,9 +1,8 @@
 import asyncio
-import contextlib
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from filelock import BaseFileLock
+from filelock import BaseFileLock, Timeout
 
 
 @asynccontextmanager
@@ -13,15 +12,19 @@ async def acquire_filelock(fl: BaseFileLock, timeout: float = 10, interval: floa
     Adapted from https://github.com/tox-dev/filelock/issues/78#issuecomment-1966513766
     """
     for _ in range(int(timeout / interval)):
-        with contextlib.suppress(TimeoutError):
+        try:
+            fl.acquire(blocking=False)
+        except Timeout:
+            await asyncio.sleep(interval)
+            continue
+        # We want to have the exclusive lock
+        if fl.lock_counter <= 1:
             try:
-                fl.acquire(blocking=False)
-                # We want to have the exclusive lock
-                if fl.lock_counter <= 1:
-                    yield
-                    break
+                yield
             finally:
                 fl.release()
+            return
+        # reentrant hold by an outer acquire: back off and retry
+        fl.release()
         await asyncio.sleep(interval)
-    else:
-        raise TimeoutError("Could not obtain file lock")
+    raise TimeoutError("Could not obtain file lock")

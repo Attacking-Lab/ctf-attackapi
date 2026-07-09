@@ -145,6 +145,19 @@ class LocksTestCase(BaseTestCase):
 
         self.assertEqual(list(events), [3])
 
+    def test_body_timeout_propagates(self) -> None:
+        """A TimeoutError raised under the lock must propagate, not become a RuntimeError"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock = FileLock(tmpdir + "/lockfile")
+
+            async def body() -> None:
+                async with acquire_filelock(lock, timeout=1):
+                    raise TimeoutError("upstream fetch timed out")
+
+            with self.assertRaises(TimeoutError):
+                asyncio.run(body())
+            self.assertFalse(lock.is_locked)
+
     # TODO run cross-platform
 
 
