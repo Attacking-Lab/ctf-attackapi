@@ -55,6 +55,8 @@ class DecoderTestCase(BaseTestCase):
         }
         self.assertEqual(ref, info.flag_id_raw("timetype", "15"))
         self.assertEqual(ref, info.flag_id_raw("timetype", "10.1.15.1"))
+        flat_ref = [s for team in ref.values() for store in team.values() for s in store]
+        self.assertEqual(flat_ref, info.flag_id_flat("timetype", "15"))
 
     def test_faust(self) -> None:
         info = Decoder().parse((self._res / "faust2024.json").read_bytes())
@@ -73,6 +75,7 @@ class DecoderTestCase(BaseTestCase):
         ]
         self.assertEqual(ref, info.flag_id_raw("asm_chat", "57"))
         self.assertEqual(ref, info.flag_id_raw("asm_chat", "fd66:666:57::2"))
+        self.assertEqual(ref, info.flag_id_flat("asm_chat", "57"))
 
     def _bench(self, fname: str) -> float:
         times = []

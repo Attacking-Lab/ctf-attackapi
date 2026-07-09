@@ -7,7 +7,10 @@ RawFlagIds: TypeAlias = Union[list, dict[str, Union[str, list, dict]]]
 
 def _flat(flag_ids: Any) -> list[str]:
     if isinstance(flag_ids, list):
-        return flag_ids[0]
+        result = []
+        for value in flag_ids:
+            result += _flat(value)
+        return result
     if isinstance(flag_ids, dict):
         result = []
         for value in flag_ids.values():
