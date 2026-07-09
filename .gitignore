@@ -1,5 +1,5 @@
 /.idea
-__pycache_
+__pycache__
 .mypy_cache
 /dist
 /.python-version
