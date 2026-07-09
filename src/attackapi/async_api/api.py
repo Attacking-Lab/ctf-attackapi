@@ -157,7 +157,7 @@ class AdCtfApiAsync:
         # Step 2: try to load from file
         # this does not work on Windows, because concurrent read + replacing files is not possible.
         # for better performance please use Linux
-        if sys.argv != "win32":
+        if sys.platform != "win32":
             info = self._check_file_cache()
             if info is not None:
                 return info
