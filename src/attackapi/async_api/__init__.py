@@ -1,4 +1,4 @@
-from .api import AdCtfApiAsync
+from .api import AdCtfApiAsync, JsonAdCtfApiAsync
 from .decoders import Decoder, Dialect
 
-__all__ = ["AdCtfApiAsync", "Decoder", "Dialect"]
+__all__ = ["AdCtfApiAsync", "JsonAdCtfApiAsync", "Decoder", "Dialect"]

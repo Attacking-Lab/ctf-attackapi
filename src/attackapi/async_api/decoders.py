@@ -12,7 +12,7 @@ enowars: availableTeams: [IP1, IP2, ...]
 import json
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Generic, TypeVar
 
 from attackapi.models import AttackInfo, Team
 
@@ -76,8 +76,21 @@ DIALECTS = [
     DefaultDialect("none")
 ]
 
+T = TypeVar("T")
 
-class Decoder:
+
+class GenericDecoder(ABC, Generic[T]):
+    @abstractmethod
+    def parse(self, raw: bytes) -> T:
+        raise NotImplementedError()
+
+
+class JSONDecoder(GenericDecoder[dict]):
+    def parse(self, raw: bytes) -> dict:
+        return json.loads(raw)
+
+
+class Decoder(GenericDecoder[AttackInfo]):
     """
     A decoder converts the game APIs response (in bytes) into teams, services, and attack information.
     """

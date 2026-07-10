@@ -5,13 +5,13 @@ import tempfile
 import time
 from importlib.metadata import version
 from pathlib import Path
-from typing import Optional, Union, Generic, TypeVar, AsyncContextManager
+from typing import Optional, Union, Generic, TypeVar, AsyncContextManager, Any
 
 import aiologic
 from aiohttp import ClientSession, ClientTimeout
 from filelock import FileLock
 
-from attackapi.async_api.decoders import Decoder
+from attackapi.async_api.decoders import Decoder, GenericDecoder, JSONDecoder
 from attackapi.async_api.filelock import acquire_filelock
 from attackapi.models import AttackInfo
 
@@ -39,7 +39,7 @@ class GlobalCache(Generic[T]):
         self._cache[key] = (time.time(), value)
 
 
-_api_response_cache: GlobalCache[AttackInfo] = GlobalCache()
+_api_response_cache: GlobalCache[Any] = GlobalCache()
 
 
 class FileCache:
@@ -81,28 +81,21 @@ def _atomic_write(p: Path, raw: bytes) -> None:
     tmpfile.replace(p)
 
 
-class AdCtfApiAsync:
-    """
-    Async API to retrieve AD team / flag information with as much caching as possible.
-    """
-
-    def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
-                 lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
+class GenericAdCtfApiAsync(Generic[T]):
+    def __init__(self, decoder: GenericDecoder[T], url: str = "",
+                 tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
+                 lifetime: float = 30.0, timeout: float = 10.0,
                  aiohttp_arguments: Optional[dict] = None) -> None:
         """
         Create a new API client.
 
-        :param url: URL of your game's API (defaults to environment variable CTF_API)
+        :param decoder: A decoder for API responses
+        :param url: URL of your game's API
         :param tmp_directory: where to store cache files
         :param lifetime: How long to cache data for (in seconds)
         :param timeout: How long to wait for API calls (in seconds)
-        :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
         :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
         """
-        if not url:
-            if "CTF_API" not in os.environ:
-                raise Exception("Please call configure() or set CTF_API environment variable!")
-            url = os.environ["CTF_API"]
         if timeout < 1:
             raise ValueError("Timeout must be at least 1 second")
         if lifetime < timeout:
@@ -111,7 +104,7 @@ class AdCtfApiAsync:
         self._url = url
         self._lifetime = lifetime
         self._timeout = timeout
-        self._decoder = decoder or Decoder()
+        self._decoder = decoder
         self._aiohttp_arguments = aiohttp_arguments or {
             "headers": {"User-Agent": "python/attackapi " + version("ctf-attackapi")}
         }
@@ -121,7 +114,7 @@ class AdCtfApiAsync:
             Path(tmp_directory) / f"ctf-{self._cache_key}.json.lock"
         )
 
-    async def attack_info(self) -> AttackInfo:
+    async def retrieve(self) -> T:
         """
         Get the current attack info. Either from cache, from disk, or from game API.
         This method might fail with aiohttp exceptions.
@@ -141,19 +134,19 @@ class AdCtfApiAsync:
             _api_response_cache.set(self._cache_key, info)
             return info
 
-    def _check_memory_cache(self) -> Optional[AttackInfo]:
+    def _check_memory_cache(self) -> Optional[T]:
         if (age := _api_response_cache.age(self._cache_key)) is not None and age <= self._lifetime:
             return _api_response_cache.get(self._cache_key)
         return None
 
-    def _check_file_cache(self) -> Optional[AttackInfo]:
+    def _check_file_cache(self) -> Optional[T]:
         if (age := self._file_cache.age()) is not None and age <= self._lifetime:
             raw = self._file_cache.get()
             if raw is not None:
                 return self._decoder.parse(raw)
         return None
 
-    async def _attack_info_from_file(self) -> AttackInfo:
+    async def _attack_info_from_file(self) -> T:
         # Step 2: try to load from file
         # this does not work on Windows, because concurrent read + replacing files is not possible.
         # for better performance please use Linux
@@ -179,3 +172,58 @@ class AdCtfApiAsync:
             async with session.get(self._url, timeout=ClientTimeout(total=self._timeout)) as response:
                 response.raise_for_status()
                 return await response.read()
+
+
+class JsonAdCtfApiAsync(GenericAdCtfApiAsync[dict]):
+    def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
+                 lifetime: float = 30.0, timeout: float = 10.0,
+                 aiohttp_arguments: Optional[dict] = None) -> None:
+        """
+        Create a new API client.
+
+        :param url: URL of any of your game's APIs
+        :param tmp_directory: where to store cache files
+        :param lifetime: How long to cache data for (in seconds)
+        :param timeout: How long to wait for API calls (in seconds)
+        :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
+        :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        """
+        if not url:
+            if "CTF_API" not in os.environ:
+                raise Exception("Please call configure() or set CTF_API environment variable!")
+            url = os.environ["CTF_API"]
+        super().__init__(decoder=JSONDecoder(), url=url, tmp_directory=tmp_directory, lifetime=lifetime,
+                         timeout=timeout, aiohttp_arguments=aiohttp_arguments)
+
+
+class AdCtfApiAsync(GenericAdCtfApiAsync[AttackInfo]):
+    """
+    Async API to retrieve AD team / flag information with as much caching as possible.
+    """
+
+    def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
+                 lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
+                 aiohttp_arguments: Optional[dict] = None) -> None:
+        """
+        Create a new API client.
+
+        :param url: URL of your game's API (defaults to environment variable CTF_API)
+        :param tmp_directory: where to store cache files
+        :param lifetime: How long to cache data for (in seconds)
+        :param timeout: How long to wait for API calls (in seconds)
+        :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
+        :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        """
+        if not url:
+            if "CTF_API" not in os.environ:
+                raise Exception("Please call configure() or set CTF_API environment variable!")
+            url = os.environ["CTF_API"]
+        super().__init__(decoder=decoder or Decoder(), url=url, tmp_directory=tmp_directory, lifetime=lifetime,
+                         timeout=timeout, aiohttp_arguments=aiohttp_arguments)
+
+    async def attack_info(self) -> AttackInfo:
+        """
+        Get the current attack info. Either from cache, from disk, or from game API.
+        This method might fail with aiohttp exceptions.
+        """
+        return await self.retrieve()

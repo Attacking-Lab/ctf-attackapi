@@ -183,3 +183,15 @@ You can also use docker to run the server:
 # edit compose.yaml and insert your CTF API URL before!
 docker compose up -d
 ```
+
+
+Using attackapi for other information (scoreboard etc.)
+-------------------------------------------------------
+Feel free to re-use the caching layers for other information, like the current scoreboard.
+The class `JsonAdCtfApiAsync` accepts arbitrary JSON endpoints:
+
+```python
+from attackapi.async_api import JsonAdCtfApiAsync
+
+info = await JsonAdCtfApiAsync("https://scoreboard.ctf.saarland/api/scoreboard_current.json").retrieve()
+```
