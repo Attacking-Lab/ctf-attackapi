@@ -175,7 +175,7 @@ class GenericAdCtfApiAsync(Generic[T]):
 
 
 class JsonAdCtfApiAsync(GenericAdCtfApiAsync[dict]):
-    def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
+    def __init__(self, url: str, tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
                  lifetime: float = 30.0, timeout: float = 10.0,
                  aiohttp_arguments: Optional[dict] = None) -> None:
         """
@@ -188,10 +188,6 @@ class JsonAdCtfApiAsync(GenericAdCtfApiAsync[dict]):
         :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
         :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
         """
-        if not url:
-            if "CTF_API" not in os.environ:
-                raise Exception("Please call configure() or set CTF_API environment variable!")
-            url = os.environ["CTF_API"]
         super().__init__(decoder=JSONDecoder(), url=url, tmp_directory=tmp_directory, lifetime=lifetime,
                          timeout=timeout, aiohttp_arguments=aiohttp_arguments)
 
