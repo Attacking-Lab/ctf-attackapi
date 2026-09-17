@@ -34,7 +34,7 @@ class ApiTestCase(BaseTestCase):
         with self.patch_request(self._res / "saarctf2025.json") as mock:
             info = await self.api.attack_info()
             mock.assert_called_once()
-        self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+        self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
     async def test_memory_cache(self) -> None:
         with self.patch_request(self._res / "saarctf2025.json") as mock:
@@ -42,7 +42,7 @@ class ApiTestCase(BaseTestCase):
             self.api = AdCtfApiAsync("http://localhost/attack.json", self.tempdir.name)
             info = await self.api.attack_info()
             mock.assert_called_once()
-        self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+        self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
     async def test_file_cache(self) -> None:
         with self.patch_request(self._res / "saarctf2025.json") as mock:
@@ -55,7 +55,7 @@ class ApiTestCase(BaseTestCase):
 
             info = await self.api.attack_info()
             mock.assert_called_once()
-        self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+        self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
     async def test_caches_expired(self) -> None:
         with self.patch_request(self._res / "saarctf2025.json") as mock:
@@ -63,12 +63,12 @@ class ApiTestCase(BaseTestCase):
             with patch("time.time", return_value=time.time() + 120):
                 info = await self.api.attack_info()
             self.assertEqual(2, mock.call_count)
-        self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+        self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
     async def test_simple_concurrency(self) -> None:
         async def task() -> None:
             info = await self.api.attack_info()
-            self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+            self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
         with self.patch_request(self._res / "saarctf2025.json") as mock:
             await asyncio.gather(task(), task(), task(), task(), task(), task(), task(), task())

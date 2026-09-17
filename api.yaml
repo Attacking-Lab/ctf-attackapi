@@ -37,12 +37,12 @@ paths:
         '500':
           description: Internal server error
 
-  /api/v1/attack_info/{service}/{team}:
+  /api/v1/flag_ids/{service}/{team}:
     get:
       summary: Get the simplified attack info for a service and team
       description: |
         Returns simple attack information (e.g., usernames) as string array for a specific service and team combination.
-        In contrast to /api/v1/attack_info_raw, this data is consistent for all supported CTFs.
+        In contrast to /api/v1/flag_ids_raw, this data is consistent for all supported CTFs.
       operationId: getAttackInfo
       parameters:
         - name: service
@@ -71,12 +71,12 @@ paths:
         '500':
           description: Internal server error
 
-  /api/v1/attack_info_raw/{service}/{team}:
+  /api/v1/flag_ids_raw/{service}/{team}:
     get:
       summary: Get raw attack info for a service and team
       description: |
         Returns raw attack information (e.g., usernames) as given by the game API for a specific service and team combination.
-        In contrast to /api/v1/attack_info, raw data preserves more details like tick and order.
+        In contrast to /api/v1/flag_ids, raw data preserves more details like tick and order.
       operationId: getAttackInfoRaw
       parameters:
         - name: service
@@ -165,9 +165,9 @@ components:
     AttackInfoResponse:
       type: object
       required:
-        - attack_info
+        - flag_ids
       properties:
-        attack_info:
+        flag_ids:
           type: array
           items:
             type: string
@@ -176,9 +176,9 @@ components:
     AttackInfoRawResponse:
       type: object
       required:
-        - attack_info
+        - flag_ids
       properties:
-        attack_info:
+        flag_ids:
           oneOf:
             - type: array
             - type: object

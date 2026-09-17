@@ -21,8 +21,8 @@ class AttackApiViews:
             web.get("/api/v1/raw", self.get_raw),
             web.get("/api/v1/services", self.get_services),
             web.get("/api/v1/teams", self.get_teams),
-            web.get("/api/v1/attack_info/{service}/{team}", self.get_attack_info),
-            web.get("/api/v1/attack_info_raw/{service}/{team}", self.get_attack_info_raw),
+            web.get("/api/v1/flag_ids/{service}/{team}", self.get_flag_ids),
+            web.get("/api/v1/flag_ids_raw/{service}/{team}", self.get_flag_ids_raw),
         ]
 
     async def docs(self, request: web.Request) -> web.Response:
@@ -38,8 +38,8 @@ class AttackApiViews:
                 docs = docs.replace('"NOP"', json.dumps(info.teams[0].name))
                 if len(info.services) > 0:
                     s = list(info.services)[0]
-                    raw = info.flag_id_raw(s, info.teams[0])
-                    flat = info.flag_id_flat(s, info.teams[0])
+                    raw = info.flag_ids_raw(s, info.teams[0])
+                    flat = info.flag_ids(s, info.teams[0])
                     if raw:
                         docs = docs.replace(
                             json.dumps({"227": "username1", "228": "username2", "229": "username3"}),
@@ -68,31 +68,31 @@ class AttackApiViews:
         info = await self._api.attack_info()
         return web.json_response({"services": list(info.services)})
 
-    async def _attack_info_common(self, request: web.Request,
-                                  cb: Callable[[AttackInfo, str, str], Any]) -> web.Response:
+    async def _flag_ids_common(self, request: web.Request,
+                               cb: Callable[[AttackInfo, str, str], Any]) -> web.Response:
         service = request.match_info["service"]
         team = request.match_info["team"]
         if not service or not team:
             raise web.HTTPBadRequest(reason="Invalid team or service")
         info = await self._api.attack_info()
-        if service.lower() not in info.flag_ids:
+        if not info.has_service(service):
             raise web.HTTPBadRequest(reason=f"Unknown service, or service has no attack info: {service}")
         flag_ids = cb(info, service, team)
         return web.json_response(
-            {"attack_info": flag_ids}
+            {"flag_ids": flag_ids}
         )
 
-    async def get_attack_info(self, request: web.Request) -> web.Response:
+    async def get_flag_ids(self, request: web.Request) -> web.Response:
         def _cb(info: AttackInfo, service: str, team: str) -> Any:
-            return info.flag_id_flat(service, team)
+            return info.flag_ids(service, team)
 
-        return await self._attack_info_common(request, _cb)
+        return await self._flag_ids_common(request, _cb)
 
-    async def get_attack_info_raw(self, request: web.Request) -> web.Response:
+    async def get_flag_ids_raw(self, request: web.Request) -> web.Response:
         def _cb(info: AttackInfo, service: str, team: str) -> Any:
-            return info.flag_id_raw(service, team)
+            return info.flag_ids_raw(service, team)
 
-        return await self._attack_info_common(request, _cb)
+        return await self._flag_ids_common(request, _cb)
 
 
 async def create_app() -> web.Application:

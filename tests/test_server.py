@@ -77,20 +77,20 @@ class ServerTestCase(AioHTTPTestCase, BaseTestCase):
         "237": "StingyWideCarpet9739"
     }
 
-    async def test_attack_info(self) -> None:
+    async def test_flag_ids(self) -> None:
         ref = [self.nop_ref[k] for k in sorted(self.nop_ref.keys())]
         for team in ("1", "nop", "10.32.1.2"):
-            async with self.client.request("GET", f"/api/v1/attack_info/licenser/{team}") as resp:
+            async with self.client.request("GET", f"/api/v1/flag_ids/licenser/{team}") as resp:
                 self.assertEqual(resp.status, 200)
                 data = await resp.json()
-                self.assertEqual(ref, data["attack_info"])
+                self.assertEqual(ref, data["flag_ids"])
 
-    async def test_attack_info_raw(self) -> None:
+    async def test_flag_ids_raw(self) -> None:
         for team in ("1", "nop", "10.32.1.2"):
-            async with self.client.request("GET", f"/api/v1/attack_info_raw/licenser/{team}") as resp:
+            async with self.client.request("GET", f"/api/v1/flag_ids_raw/licenser/{team}") as resp:
                 self.assertEqual(resp.status, 200)
                 data = await resp.json()
-                self.assertEqual(self.nop_ref, data["attack_info"])
+                self.assertEqual(self.nop_ref, data["flag_ids"])
 
     async def test_raw(self) -> None:
         async with self.client.request("GET", "/api/v1/raw") as resp:

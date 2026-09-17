@@ -30,9 +30,9 @@ class DecoderTestCase(BaseTestCase):
             "236": "GamyVersedSpider3593",
             "237": "StingyWideCarpet9739"
         }
-        self.assertEqual(nop_ref, info.flag_id_raw("Licenser", "nop"))
-        self.assertEqual(nop_ref, info.flag_id_raw("Licenser", "1"))
-        self.assertEqual(nop_ref, info.flag_id_raw("Licenser", "10.32.1.2"))
+        self.assertEqual(nop_ref, info.flag_ids_raw("Licenser", "nop"))
+        self.assertEqual(nop_ref, info.flag_ids_raw("Licenser", "1"))
+        self.assertEqual(nop_ref, info.flag_ids_raw("Licenser", "10.32.1.2"))
 
     def test_atklab(self) -> None:
         info = Decoder().parse((self._res / "atklab2026.json").read_bytes())
@@ -48,13 +48,13 @@ class DecoderTestCase(BaseTestCase):
         self.assertEqual(nop, info.team_lookup["nop"])
 
         ref = {"5": {"0": "alice", "1": "bob"}, "6": {"0": "carol", "1": None}}
-        self.assertEqual(ref, info.flag_id_raw("ServiceA", "nop"))
-        self.assertEqual(ref, info.flag_id_raw("servicea", "1"))
-        self.assertEqual(ref, info.flag_id_raw("ServiceA", "10.32.1.2"))
+        self.assertEqual(ref, info.flag_ids_raw("ServiceA", "nop"))
+        self.assertEqual(ref, info.flag_ids_raw("servicea", "1"))
+        self.assertEqual(ref, info.flag_ids_raw("ServiceA", "10.32.1.2"))
         # null flag IDs are holes, not values
-        self.assertEqual(["alice", "bob", "carol"], info.flag_id_flat("ServiceA", "nop"))
-        self.assertEqual([], info.flag_id_flat("ServiceA", "does-not-exist"))
-        self.assertIsNone(info.flag_id_raw("nope", "nop"))
+        self.assertEqual(["alice", "bob", "carol"], info.flag_ids("ServiceA", "nop"))
+        self.assertEqual([], info.flag_ids("ServiceA", "does-not-exist"))
+        self.assertIsNone(info.flag_ids_raw("nope", "nop"))
 
     def test_enowars(self) -> None:
         info = Decoder().parse((self._res / "enowars9.json").read_bytes())
@@ -75,10 +75,10 @@ class DecoderTestCase(BaseTestCase):
             "477": {"1": ["8EdFEQWgHwEERr"], "2": ["R46Z910SMC"]},
             "478": {"1": ["C2MkxdY0"], "2": ["D00CNNTA1U"]}
         }
-        self.assertEqual(ref, info.flag_id_raw("timetype", "15"))
-        self.assertEqual(ref, info.flag_id_raw("timetype", "10.1.15.1"))
+        self.assertEqual(ref, info.flag_ids_raw("timetype", "15"))
+        self.assertEqual(ref, info.flag_ids_raw("timetype", "10.1.15.1"))
         flat_ref = [s for team in ref.values() for store in team.values() for s in store]
-        self.assertEqual(flat_ref, info.flag_id_flat("timetype", "15"))
+        self.assertEqual(flat_ref, info.flag_ids("timetype", "15"))
 
     def test_faust(self) -> None:
         info = Decoder().parse((self._res / "faust2024.json").read_bytes())
@@ -95,9 +95,9 @@ class DecoderTestCase(BaseTestCase):
             "nSHVYBpYeAgVnnSA",
             "AcSKiYgoCVIjkYNM"
         ]
-        self.assertEqual(ref, info.flag_id_raw("asm_chat", "57"))
-        self.assertEqual(ref, info.flag_id_raw("asm_chat", "fd66:666:57::2"))
-        self.assertEqual(ref, info.flag_id_flat("asm_chat", "57"))
+        self.assertEqual(ref, info.flag_ids_raw("asm_chat", "57"))
+        self.assertEqual(ref, info.flag_ids_raw("asm_chat", "fd66:666:57::2"))
+        self.assertEqual(ref, info.flag_ids("asm_chat", "57"))
 
     def _bench(self, fname: str) -> float:
         times = []

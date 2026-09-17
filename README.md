@@ -23,19 +23,27 @@ This package fetches, parses, and caches attack info for you, so you can focus o
 Changes in 0.3.0
 ----------------
 
-- Lookups never raise. `flag_id_flat()` returns `[]` and `flag_id_raw()` returns `None` for
+- `flag_id_flat()` is now `flag_ids()`, and `flag_id_raw()` is `flag_ids_raw()`. The list of
+  strings is what an exploit wants essentially every time, so it gets the plain name, and only the
+  one that hands back the game's own structure carries a suffix. The `attack_info_*` aliases are
+  gone with them: flag IDs is what most games call these, so the package calls them that once.
+  The REST API follows -- `/api/v1/flag_ids/...` and `/api/v1/flag_ids_raw/...`, returning a
+  `flag_ids` key.
+- Lookups never raise. `flag_ids()` returns `[]` and `flag_ids_raw()` returns `None` for
   anything they cannot answer, including a `None` team -- so the common
-  `flag_id_flat(service, info.team(name))` no longer dies on a name that did not resolve.
+  `flag_ids(service, info.team(name))` no longer dies on a name that did not resolve.
 - The mistakes that are wrong on *every* call -- an unknown service or team, a team that never
   resolved, a team of a type the API never took -- now raise a `UserWarning` pointing at your
   line, instead of being indistinguishable from a team that simply has no flag IDs yet. The
   ordinary case stays silent: a known team with nothing published this round is not your mistake.
   Silence the warnings with `warnings.simplefilter("ignore")` if your exploit prefers it.
-- `flag_id_raw()` and `flag_id_flat()` take an optional `round`, counting back from the newest
-  published round when negative (`-1` is the newest). The default is unchanged and still returns
-  every round the game API published -- it only publishes the rounds whose flags are still valid,
-  so narrowing by default would cost you flags.
-- The round selector is public as `attackapi.select_round()`, next to `flatten_flag_ids()`.
+- Both take an optional `round`, counting back from the newest published round when negative
+  (`-1` is the newest). The default is unchanged and still returns every round the game API
+  published -- it only publishes the rounds whose flags are still valid, so narrowing by default
+  would cost you flags. The selector is public as `attackapi.select_round()`, next to
+  `flatten_flag_ids()`.
+- New `has_service()`, for the case-insensitive "does this game have that service?" check that
+  previously meant reaching into the `flag_ids` field. That field is now private.
 
 Changes in 0.2.0
 ----------------
@@ -44,7 +52,7 @@ Changes in 0.2.0
   instead of `flag_ids`, and rounds instead of ticks. The `saarctf`, `faustctf` and `enowars`
   dialects are unchanged.
 - `AttackInfo` gained `flag_regex` and `current_round`, filled in for the games that report them.
-- The helper behind `flag_id_flat()` is public as `attackapi.flatten_flag_ids()`, for callers that
+- The helper behind `flag_id_flat()` (now `flag_ids()`) is public as `attackapi.flatten_flag_ids()`, for callers that
   flatten a subset of the raw structure themselves.
 - `flag_id_flat()` drops `null` flag IDs instead of returning them as `None` -- a flag store with
   no ID for a round is a hole, not a value.
@@ -81,7 +89,7 @@ from attackapi import *
 # 1. Set the API URL in code (or use CTF_API environment variable)
 configure("https://scoreboard.ctf.saarland/api/attack.json")
 # 2. Get attack infos!
-for username in attack_info().flag_id_flat("servicename", "10.32.1.2"):
+for username in attack_info().flag_ids("servicename", "10.32.1.2"):
   pwn("10.32.1.2", username)
 ```
 
@@ -167,25 +175,26 @@ print(info.teams)  # list of Team objects
 print(info.teams[0].id, info.teams[0].ip, info.teams[0].name)  # Team is ID, IP, and optional name
 print(info.team("10.32.1.2"))  # query Team object by ID, IP, or name
 
-# set of service names
+# set of service names, and a case-insensitive check for one
 print(info.services)
+print(info.has_service("servicename"))
 
 # flag format and the round this info was generated for, where the game reports them
 print(info.flag_regex, info.current_round)
 
-# raw flag IDs for a service and team.
-# team can be ID, IP, or name. 
-# Return data format is determined by game API.
-print(info.flag_id_raw("servicename", "10.32.1.2"))
-# => {"227": "abc", "228": "def", ...}
-
-# Get flag IDs as string list (independent of game API format, but less precise)
-print(info.flag_id_flat("servicename", "10.32.1.2"))
+# flag IDs for a service and team, as a string list -- the same shape whatever game you play.
+# team can be ID, IP, or name.
+print(info.flag_ids("servicename", "10.32.1.2"))
 # => ["abc", "def"]
 
 # One round only, for the games that report rounds. -1 is the newest published round.
-print(info.flag_id_flat("servicename", "10.32.1.2", -1))
+print(info.flag_ids("servicename", "10.32.1.2", -1))
 # => ["def"]
+
+# the same flag IDs in the game API's own format, when you need the structure it keeps.
+# Return data format is determined by game API.
+print(info.flag_ids_raw("servicename", "10.32.1.2"))
+# => {"227": "abc", "228": "def", ...}
 ```
 
 Nothing above raises. A lookup that cannot be answered gives you `[]` (or `None` for the raw

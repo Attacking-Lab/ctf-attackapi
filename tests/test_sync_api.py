@@ -23,7 +23,7 @@ class SyncApiTestCase(BaseTestCase):
         with self.patch_request(self._res / "saarctf2025.json") as mock:
             info = self.api.attack_info()
             mock.assert_called_once()
-        self.assertIn("UttermostIntelligentSpot6463", info.flag_id_flat("Licenser", "nop"))
+        self.assertIn("UttermostIntelligentSpot6463", info.flag_ids("Licenser", "nop"))
 
     def test_threadpool(self) -> None:
         with BaseTestCase.patch_request(BaseTestCase._res / "saarctf2025.json") as mock:

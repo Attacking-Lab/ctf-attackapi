@@ -171,7 +171,7 @@ class Decoder(GenericDecoder[AttackInfo]):
             if not isinstance(flag_ids, dict):
                 raise ValueError(f"Invalid flag_ids format for service {service_name!r}: {type(flag_ids)}")
             info.services.add(service_name)
-            info.flag_ids[service_name.lower()] = flag_ids
+            info._flag_ids[service_name.lower()] = flag_ids
 
     def _parse_teams(self, dialect: Dialect, info: AttackInfo, teams: list) -> None:
         for team in teams:

@@ -25,7 +25,7 @@ api = AdCtfApiAsync(
 async def attack(ip: str) -> None:
     service_name = "Licenser"  # print((await api.attack_info()).services)
     # Request attack info / flag IDs for the service/team you want to exploit
-    for username in (await api.attack_info()).flag_id_flat(service_name, ip):
+    for username in (await api.attack_info()).flag_ids(service_name, ip):
         print(f"Attacking {ip!r} / {username!r} ...")
         ...
 
