@@ -20,6 +20,23 @@ Downloading that file for every exploit you're firing is costing time and bandwi
 
 This package fetches, parses, and caches attack info for you, so you can focus on writing exploits!
 
+Changes in 0.3.0
+----------------
+
+- Lookups never raise. `flag_id_flat()` returns `[]` and `flag_id_raw()` returns `None` for
+  anything they cannot answer, including a `None` team -- so the common
+  `flag_id_flat(service, info.team(name))` no longer dies on a name that did not resolve.
+- The mistakes that are wrong on *every* call -- an unknown service or team, a team that never
+  resolved, a team of a type the API never took -- now raise a `UserWarning` pointing at your
+  line, instead of being indistinguishable from a team that simply has no flag IDs yet. The
+  ordinary case stays silent: a known team with nothing published this round is not your mistake.
+  Silence the warnings with `warnings.simplefilter("ignore")` if your exploit prefers it.
+- `flag_id_raw()` and `flag_id_flat()` take an optional `round`, counting back from the newest
+  published round when negative (`-1` is the newest). The default is unchanged and still returns
+  every round the game API published -- it only publishes the rounds whose flags are still valid,
+  so narrowing by default would cost you flags.
+- The round selector is public as `attackapi.select_round()`, next to `flatten_flag_ids()`.
+
 Changes in 0.2.0
 ----------------
 
@@ -165,6 +182,10 @@ print(info.flag_id_raw("servicename", "10.32.1.2"))
 # Get flag IDs as string list (independent of game API format, but less precise)
 print(info.flag_id_flat("servicename", "10.32.1.2"))
 # => ["abc", "def"]
+
+# One round only, for the games that report rounds. -1 is the newest published round.
+print(info.flag_id_flat("servicename", "10.32.1.2", -1))
+# => ["def"]
 ```
 
 Nothing above raises. A lookup that cannot be answered gives you `[]` (or `None` for the raw

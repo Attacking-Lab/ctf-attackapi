@@ -28,6 +28,31 @@ def flatten_flag_ids(flag_ids: Any) -> list[str]:
     return [str(flag_ids)]
 
 
+def select_round(flag_ids: Any, round: int) -> Any:
+    """
+    Restrict flag IDs to a single round. Every game that reports a round keys its per-team attack
+    info by it; FAUST CTF does not have the dimension at all, and its plain list is returned
+    unchanged rather than sliced into something that only looks like a round.
+
+    :param flag_ids: raw flag IDs for one service and team, as returned by flag_id_raw()
+    :param round: a round number, or an offset from the newest published round (-1 = newest)
+    :return: the same structure, holding at most the requested round
+    """
+    if not isinstance(flag_ids, dict):
+        return flag_ids
+    keys = list(flag_ids.keys())
+    if round < 0:
+        # the game API publishes a window of recent rounds, in no guaranteed order
+        if all(isinstance(key, str) and key.lstrip("-").isdigit() for key in keys):
+            keys.sort(key=int)
+        if -round > len(keys):
+            return {}
+        key = keys[round]
+    else:
+        key = str(round)
+    return {key: flag_ids[key]} if key in flag_ids else {}
+
+
 @dataclass(frozen=True)
 class Team:
     """
@@ -68,7 +93,8 @@ class AttackInfo:
         """
         return self.team_lookup.get(str(name).lower())
 
-    def flag_id_raw(self, service: str, team: Union[str, int, Team, None]) -> Optional[RawFlagIds]:
+    def flag_id_raw(self, service: str, team: Union[str, int, Team, None],
+                    round: Optional[int] = None) -> Optional[RawFlagIds]:
         """
         Find flag IDs for a service and team. Flag IDs are returned in the APIs raw format.
 
@@ -77,11 +103,14 @@ class AttackInfo:
 
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
+        :param round: Restrict the result to one round, or to an offset from the newest published
+            round (-1 = newest). Defaults to every round the game API published.
         :return:
         """
-        return self._flag_id_raw(service, team)
+        return self._flag_id_raw(service, team, round)
 
-    def flag_id_flat(self, service: str, team: Union[str, int, Team, None]) -> list[str]:
+    def flag_id_flat(self, service: str, team: Union[str, int, Team, None],
+                     round: Optional[int] = None) -> list[str]:
         """
         Find flag IDs for a service and team.
         Flag IDs are returned as a simple string list, containing all attack info for all flag stores.
@@ -90,12 +119,15 @@ class AttackInfo:
 
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
+        :param round: Restrict the result to one round, or to an offset from the newest published
+            round (-1 = newest). Defaults to every round the game API published.
         :return:
         """
-        flag_ids = self._flag_id_raw(service, team)
+        flag_ids = self._flag_id_raw(service, team, round)
         return flatten_flag_ids(flag_ids) if flag_ids is not None else []
 
-    def attack_info_raw(self, service: str, team: Union[str, int, Team, None]) -> Optional[RawFlagIds]:
+    def attack_info_raw(self, service: str, team: Union[str, int, Team, None],
+                        round: Optional[int] = None) -> Optional[RawFlagIds]:
         """
         Find attack info for a service and team. Attack info is returned in the APIs raw format.
 
@@ -103,11 +135,13 @@ class AttackInfo:
 
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
+        :param round: Restrict the result to one round (-1 = newest published round)
         :return:
         """
-        return self._flag_id_raw(service, team)
+        return self._flag_id_raw(service, team, round)
 
-    def attack_info_flat(self, service: str, team: Union[str, int, Team, None]) -> list[str]:
+    def attack_info_flat(self, service: str, team: Union[str, int, Team, None],
+                         round: Optional[int] = None) -> list[str]:
         """
         Find attack info for a service and team.
         Attack info is returned as a simple string list, containing all attack info for all flag stores.
@@ -116,13 +150,14 @@ class AttackInfo:
 
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
+        :param round: Restrict the result to one round (-1 = newest published round)
         :return:
         """
-        flag_ids = self._flag_id_raw(service, team)
+        flag_ids = self._flag_id_raw(service, team, round)
         return flatten_flag_ids(flag_ids) if flag_ids is not None else []
 
     def _flag_id_raw(self, service: str, team: Union[str, int, Team, None],
-                     stacklevel: int = 3) -> Optional[RawFlagIds]:
+                     round: Optional[int], stacklevel: int = 3) -> Optional[RawFlagIds]:
         """
         The lookup behind all four public accessors. Warns rather than raises on the mistakes that
         are wrong on every call -- an unknown service or team, a team that never resolved -- and
@@ -139,7 +174,10 @@ class AttackInfo:
             warnings.warn(f"Unknown service {service!r}, this game has: {', '.join(sorted(self.services))}",
                           stacklevel=stacklevel)
             return None
-        return self._team_flag_ids(service, flag_ids, team, stacklevel + 1)
+        raw = self._team_flag_ids(service, flag_ids, team, stacklevel + 1)
+        if raw is None or round is None:
+            return raw
+        return select_round(raw, round)
 
     def _team_flag_ids(self, service: str, flag_ids: dict, team: Union[str, int, Team],
                        stacklevel: int) -> Optional[RawFlagIds]:

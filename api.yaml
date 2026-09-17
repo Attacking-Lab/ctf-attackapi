@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: CTF AttackAPI Server
   description: REST API for attack-defense CTF attack information, fully cached
-  version: 0.2.2
+  version: 0.3.0
 servers:
   - url: http://localhost:14320
     description: Your local server instance
