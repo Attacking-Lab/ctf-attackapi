@@ -1,8 +1,9 @@
 """
 Summary of different API formats:
-saarctf: flag_ids => {service_name => {ip => data}}   {tick: a, tick2: [b, c]}
-faust:   flag_ids => {service_name => {ID => data}}   [a, b]
-enowars: services => {service_name => {ip => data}}   {tick: {X: [a], Y: [b]}}
+saarctf: flag_ids    => {service_name => {ip => data}}   {tick: a, tick2: [b, c]}
+atklab:  attack_info => {service_name => {ip => data}}   {round: {store_index: a}}
+faust:   flag_ids    => {service_name => {ID => data}}   [a, b]
+enowars: services    => {service_name => {ip => data}}   {tick: {X: [a], Y: [b]}}
 
 Additional team list:
 saarctf: teams => [0 => {id: ..., name: ..., logo: ...}]
@@ -12,7 +13,7 @@ enowars: availableTeams: [IP1, IP2, ...]
 import json
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from typing import Optional, Generic, TypeVar
+from typing import Callable, Optional, Generic, TypeVar
 
 from attackapi.models import AttackInfo, Team
 
@@ -52,6 +53,17 @@ class SaarctfDialect(Dialect):
         return f"10.{32 + (team_id // 200)}.{team_id % 200}.2"  # actually not needed, saarCTF API exposes full team info
 
 
+class AtklabDialect(Dialect):
+    """
+    ATKLAB gameserver (ECSC 2026). Team entries are shaped like saarCTF's, but the attack info
+    sits under "attack_info" and rounds are called rounds, not ticks.
+    """
+
+    def matches(self, data: dict) -> bool:
+        return "attack_info" in data and "teams" in data \
+            and len(data["teams"]) > 0 and isinstance(data["teams"][0], dict)
+
+
 class FaustDialect(Dialect):
     def matches(self, data: dict) -> bool:
         return "flag_ids" in data and "teams" in data and len(data["teams"]) > 0 and isinstance(data["teams"][0], int)
@@ -70,6 +82,7 @@ class EnowarsDialect(Dialect):
 
 
 DIALECTS = [
+    AtklabDialect("atklab"),
     SaarctfDialect("saarctf"),
     FaustDialect("faustctf", "fd66:666:{:d}::2"),
     EnowarsDialect("enowars", "10.1.{:d}.1"),
@@ -90,6 +103,16 @@ class JSONDecoder(GenericDecoder[dict]):
         return json.loads(raw)
 
 
+class FunctionDecoder(GenericDecoder[T]):
+    """Adapts a plain ``bytes -> T`` callable to the decoder interface."""
+
+    def __init__(self, parse: Callable[[bytes], T]) -> None:
+        self._parse = parse
+
+    def parse(self, raw: bytes) -> T:
+        return self._parse(raw)
+
+
 class Decoder(GenericDecoder[AttackInfo]):
     """
     A decoder converts the game APIs response (in bytes) into teams, services, and attack information.
@@ -108,16 +131,23 @@ class Decoder(GenericDecoder[AttackInfo]):
         :raises ValueError: If data is invalid
         :return:
         """
-        info = AttackInfo(raw=raw)
         data = json.loads(raw)
         dialect = self._get_dialect(data)
+        info = AttackInfo(
+            flag_regex=data.get("flag_regex"),
+            # saarCTF counts ticks, the ATKLAB gameserver counts rounds; same number
+            current_round=data.get("current_round", data.get("current_tick")),
+            raw=raw
+        )
 
         if "flag_ids" in data:
             self._parse_services(info, data["flag_ids"])
+        elif "attack_info" in data:
+            self._parse_services(info, data["attack_info"])
         elif "services" in data:
             self._parse_services(info, data["services"])
         else:
-            raise ValueError("Unknown format - no flag_ids or services key found")
+            raise ValueError("Unknown format - no flag_ids, attack_info or services key found")
 
         if "teams" in data:
             self._parse_teams(dialect, info, data["teams"])

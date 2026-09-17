@@ -34,6 +34,28 @@ class DecoderTestCase(BaseTestCase):
         self.assertEqual(nop_ref, info.flag_id_raw("Licenser", "1"))
         self.assertEqual(nop_ref, info.flag_id_raw("Licenser", "10.32.1.2"))
 
+    def test_atklab(self) -> None:
+        info = Decoder().parse((self._res / "atklab2026.json").read_bytes())
+        self.assertEqual(3, len(info.teams))
+        self.assertEqual(3 * 3, len(info.team_lookup))
+        self.assertEqual("ECSC_[A-Za-z0-9-_]{32}", info.flag_regex)
+        self.assertEqual(7, info.current_round)
+        self.assertSetEqual({"ServiceA", "ServiceB"}, info.services)
+
+        nop = Team(1, "10.32.1.2", "NOP")
+        self.assertEqual(nop, info.team_lookup["1"])
+        self.assertEqual(nop, info.team_lookup["10.32.1.2"])
+        self.assertEqual(nop, info.team_lookup["nop"])
+
+        ref = {"5": {"0": "alice", "1": "bob"}, "6": {"0": "carol", "1": None}}
+        self.assertEqual(ref, info.flag_id_raw("ServiceA", "nop"))
+        self.assertEqual(ref, info.flag_id_raw("servicea", "1"))
+        self.assertEqual(ref, info.flag_id_raw("ServiceA", "10.32.1.2"))
+        # null flag IDs are holes, not values
+        self.assertEqual(["alice", "bob", "carol"], info.flag_id_flat("ServiceA", "nop"))
+        self.assertEqual([], info.flag_id_flat("ServiceA", "does-not-exist"))
+        self.assertIsNone(info.flag_id_raw("nope", "nop"))
+
     def test_enowars(self) -> None:
         info = Decoder().parse((self._res / "enowars9.json").read_bytes())
         self.assertEqual(112, len(info.teams))
@@ -89,6 +111,7 @@ class DecoderTestCase(BaseTestCase):
     def test_bench(self) -> None:
         print("Benchmarking ...")
         self._bench("saarctf2025.json")
+        self._bench("atklab2026.json")
         self._bench("enowars9.json")
         self._bench("faust2024.json")
 
@@ -100,6 +123,8 @@ class DecoderTestCase(BaseTestCase):
         self.assertEqual("enowars", dialect.name)
         dialect = decoder._get_dialect(json.loads((self._res / "faust2024.json").read_bytes()))
         self.assertEqual("faustctf", dialect.name)
+        dialect = decoder._get_dialect(json.loads((self._res / "atklab2026.json").read_bytes()))
+        self.assertEqual("atklab", dialect.name)
 
 
 if __name__ == '__main__':

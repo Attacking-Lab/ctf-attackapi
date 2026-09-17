@@ -20,6 +20,20 @@ Downloading that file for every exploit you're firing is costing time and bandwi
 
 This package fetches, parses, and caches attack info for you, so you can focus on writing exploits!
 
+Changes in 0.2.0
+----------------
+
+- New `atklab` dialect for the ATKLAB gameserver (ECSC 2026): attack info under `attack_info`
+  instead of `flag_ids`, and rounds instead of ticks. The `saarctf`, `faustctf` and `enowars`
+  dialects are unchanged.
+- `AttackInfo` gained `flag_regex` and `current_round`, filled in for the games that report them.
+- The helper behind `flag_id_flat()` is public as `attackapi.flatten_flag_ids()`, for callers that
+  flatten a subset of the raw structure themselves.
+- `flag_id_flat()` drops `null` flag IDs instead of returning them as `None` -- a flag store with
+  no ID for a round is a hole, not a value.
+- `GenericAdCtfApiAsync` accepts a plain callable decoder, a `progress` hook, and an injectable
+  `memory_cache`, so it can back a whole game API rather than just `attack.json`.
+
 Features
 --------
 
@@ -29,7 +43,8 @@ Features
 - Unifies team, IP, and flag info lookup between different CTFs:
     - Supports [ENOWARS](https://enowars.com)
     - Supports [FAUST CTF](https://faustctf.net)
-    - Supports [saarCTF](https://ctf.saarland) (including ECSC gameserver)
+    - Supports [saarCTF](https://ctf.saarland)
+    - Supports the [Attacking-Lab](https://attacking-lab.com) gameserver (ECSC 2026)
 
 Quick-Start
 -----------
@@ -138,6 +153,9 @@ print(info.team("10.32.1.2"))  # query Team object by ID, IP, or name
 # set of service names
 print(info.services)
 
+# flag format and the round this info was generated for, where the game reports them
+print(info.flag_regex, info.current_round)
+
 # raw flag IDs for a service and team.
 # team can be ID, IP, or name. 
 # Return data format is determined by game API.
@@ -195,3 +213,17 @@ from attackapi.async_api import JsonAdCtfApiAsync
 
 info = await JsonAdCtfApiAsync("https://scoreboard.ctf.saarland/api/scoreboard_current.json").retrieve()
 ```
+
+To get parsed objects instead of raw dicts, `GenericAdCtfApiAsync` takes any `bytes -> object` callable:
+
+```python
+from attackapi.async_api import GenericAdCtfApiAsync
+
+scoreboard = await GenericAdCtfApiAsync(
+    parse_scoreboard, "https://scoreboard.ctf.saarland/api/scoreboard_round_237.json"
+).retrieve()
+```
+
+Both accept `progress=`, a context-manager factory called with the URL around remote fetches (to drive a
+spinner, for example), and `memory_cache=`, an own `GlobalCache` instead of the process-wide one. The
+process-wide cache is keyed by URL alone, so tests that need isolation should inject their own.

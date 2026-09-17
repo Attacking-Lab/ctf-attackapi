@@ -5,13 +5,13 @@ import tempfile
 import time
 from importlib.metadata import version
 from pathlib import Path
-from typing import Optional, Union, Generic, TypeVar, AsyncContextManager, Any
+from contextlib import nullcontext
+from typing import Callable, ContextManager, Optional, Union, Generic, TypeVar, AsyncContextManager, Any
 
 import aiologic
-from aiohttp import ClientSession, ClientTimeout
 from filelock import FileLock
 
-from attackapi.async_api.decoders import Decoder, GenericDecoder, JSONDecoder
+from attackapi.async_api.decoders import Decoder, FunctionDecoder, GenericDecoder, JSONDecoder
 from attackapi.async_api.filelock import acquire_filelock
 from attackapi.models import AttackInfo
 
@@ -37,6 +37,10 @@ class GlobalCache(Generic[T]):
 
     def set(self, key: str, value: T) -> None:
         self._cache[key] = (time.time(), value)
+
+    def clear(self) -> None:
+        """Drop every cached response. Mostly useful to isolate tests from each other."""
+        self._cache.clear()
 
 
 _api_response_cache: GlobalCache[Any] = GlobalCache()
@@ -82,19 +86,23 @@ def _atomic_write(p: Path, raw: bytes) -> None:
 
 
 class GenericAdCtfApiAsync(Generic[T]):
-    def __init__(self, decoder: GenericDecoder[T], url: str = "",
+    def __init__(self, decoder: Union[GenericDecoder[T], Callable[[bytes], T]], url: str = "",
                  tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
                  lifetime: float = 30.0, timeout: float = 10.0,
-                 aiohttp_arguments: Optional[dict] = None) -> None:
+                 aiohttp_arguments: Optional[dict] = None,
+                 memory_cache: Optional[GlobalCache] = None,
+                 progress: Optional[Callable[[str], ContextManager[None]]] = None) -> None:
         """
         Create a new API client.
 
-        :param decoder: A decoder for API responses
+        :param decoder: A decoder for API responses, or a plain bytes -> object callable
         :param url: URL of your game's API
         :param tmp_directory: where to store cache files
         :param lifetime: How long to cache data for (in seconds)
         :param timeout: How long to wait for API calls (in seconds)
         :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        :param memory_cache: Optional in-memory cache to use instead of the process-wide one
+        :param progress: Optional context-manager factory, called with the URL around remote fetches
         """
         if timeout < 1:
             raise ValueError("Timeout must be at least 1 second")
@@ -104,7 +112,9 @@ class GenericAdCtfApiAsync(Generic[T]):
         self._url = url
         self._lifetime = lifetime
         self._timeout = timeout
-        self._decoder = decoder
+        self._decoder = decoder if isinstance(decoder, GenericDecoder) else FunctionDecoder(decoder)
+        self._memory_cache = memory_cache if memory_cache is not None else _api_response_cache
+        self._progress = progress
         self._aiohttp_arguments = aiohttp_arguments or {
             "headers": {"User-Agent": "python/attackapi " + version("ctf-attackapi")}
         }
@@ -124,19 +134,19 @@ class GenericAdCtfApiAsync(Generic[T]):
         if info is not None:
             return info
         # not found? lock it to avoid concurrent loads
-        async with _api_response_cache.lock:
+        async with self._memory_cache.lock:
             # check again to avoid race conditions
             info = self._check_memory_cache()
             if info is not None:
                 return info
             # not found => load from file or API
-            info = await self._attack_info_from_file()
-            _api_response_cache.set(self._cache_key, info)
+            info = await self._from_file()
+            self._memory_cache.set(self._cache_key, info)
             return info
 
     def _check_memory_cache(self) -> Optional[T]:
-        if (age := _api_response_cache.age(self._cache_key)) is not None and age <= self._lifetime:
-            return _api_response_cache.get(self._cache_key)
+        if (age := self._memory_cache.age(self._cache_key)) is not None and age <= self._lifetime:
+            return self._memory_cache.get(self._cache_key)
         return None
 
     def _check_file_cache(self) -> Optional[T]:
@@ -146,7 +156,7 @@ class GenericAdCtfApiAsync(Generic[T]):
                 return self._decoder.parse(raw)
         return None
 
-    async def _attack_info_from_file(self) -> T:
+    async def _from_file(self) -> T:
         # Step 2: try to load from file
         # this does not work on Windows, because concurrent read + replacing files is not possible.
         # for better performance please use Linux
@@ -161,23 +171,29 @@ class GenericAdCtfApiAsync(Generic[T]):
             if info is not None:
                 return info
             # not found => load from API
-            raw = await self._attack_info_from_remote()
+            raw = await self._from_remote()
             info = self._decoder.parse(raw)
             # and save to file (atomic)
             self._file_cache.set(raw)
             return info
 
-    async def _attack_info_from_remote(self) -> bytes:
-        async with ClientSession(**self._aiohttp_arguments) as session:
-            async with session.get(self._url, timeout=ClientTimeout(total=self._timeout)) as response:
-                response.raise_for_status()
-                return await response.read()
+    async def _from_remote(self) -> bytes:
+        # imported lazily so that cache hits do not pay for importing aiohttp
+        from aiohttp import ClientSession, ClientTimeout
+
+        with self._progress(self._url) if self._progress is not None else nullcontext():
+            async with ClientSession(**self._aiohttp_arguments) as session:
+                async with session.get(self._url, timeout=ClientTimeout(total=self._timeout)) as response:
+                    response.raise_for_status()
+                    return await response.read()
 
 
 class JsonAdCtfApiAsync(GenericAdCtfApiAsync[dict]):
     def __init__(self, url: str, tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
                  lifetime: float = 30.0, timeout: float = 10.0,
-                 aiohttp_arguments: Optional[dict] = None) -> None:
+                 aiohttp_arguments: Optional[dict] = None,
+                 memory_cache: Optional[GlobalCache] = None,
+                 progress: Optional[Callable[[str], ContextManager[None]]] = None) -> None:
         """
         Create a new API client.
 
@@ -185,11 +201,13 @@ class JsonAdCtfApiAsync(GenericAdCtfApiAsync[dict]):
         :param tmp_directory: where to store cache files
         :param lifetime: How long to cache data for (in seconds)
         :param timeout: How long to wait for API calls (in seconds)
-        :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
         :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        :param memory_cache: Optional in-memory cache to use instead of the process-wide one
+        :param progress: Optional context-manager factory, called with the URL around remote fetches
         """
         super().__init__(decoder=JSONDecoder(), url=url, tmp_directory=tmp_directory, lifetime=lifetime,
-                         timeout=timeout, aiohttp_arguments=aiohttp_arguments)
+                         timeout=timeout, aiohttp_arguments=aiohttp_arguments, memory_cache=memory_cache,
+                         progress=progress)
 
 
 class AdCtfApiAsync(GenericAdCtfApiAsync[AttackInfo]):
@@ -199,7 +217,9 @@ class AdCtfApiAsync(GenericAdCtfApiAsync[AttackInfo]):
 
     def __init__(self, url: str = "", tmp_directory: Union[str, Path] = tempfile.gettempdir(), *,
                  lifetime: float = 30.0, timeout: float = 10.0, decoder: Optional[Decoder] = None,
-                 aiohttp_arguments: Optional[dict] = None) -> None:
+                 aiohttp_arguments: Optional[dict] = None,
+                 memory_cache: Optional[GlobalCache] = None,
+                 progress: Optional[Callable[[str], ContextManager[None]]] = None) -> None:
         """
         Create a new API client.
 
@@ -209,13 +229,16 @@ class AdCtfApiAsync(GenericAdCtfApiAsync[AttackInfo]):
         :param timeout: How long to wait for API calls (in seconds)
         :param decoder: A custom decoder for API responses, if the default one doesn't work for your game
         :param aiohttp_arguments: Optional arguments to pass to aiohttp.ClientSession
+        :param memory_cache: Optional in-memory cache to use instead of the process-wide one
+        :param progress: Optional context-manager factory, called with the URL around remote fetches
         """
         if not url:
             if "CTF_API" not in os.environ:
                 raise Exception("Please call configure() or set CTF_API environment variable!")
             url = os.environ["CTF_API"]
         super().__init__(decoder=decoder or Decoder(), url=url, tmp_directory=tmp_directory, lifetime=lifetime,
-                         timeout=timeout, aiohttp_arguments=aiohttp_arguments)
+                         timeout=timeout, aiohttp_arguments=aiohttp_arguments, memory_cache=memory_cache,
+                         progress=progress)
 
     async def attack_info(self) -> AttackInfo:
         """

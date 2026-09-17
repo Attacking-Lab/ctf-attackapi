@@ -15,7 +15,7 @@ from unittest.mock import patch
 from filelock import FileLock
 
 from attackapi.async_api import AdCtfApiAsync
-from attackapi.async_api.api import FileCache
+from attackapi.async_api.api import FileCache, GenericAdCtfApiAsync, GlobalCache
 from .utils import BaseTestCase, AsyncThread, AsyncProcess
 
 
@@ -108,6 +108,63 @@ class ApiTestCase(BaseTestCase):
             process.join(timeout=4)
         for process in processes:
             self.assertEqual(0, process.exitcode)
+
+
+class GenericApiTestCase(BaseTestCase):
+    """The generic client is used for any cached game endpoint, not only attack.json."""
+
+    def setUp(self) -> None:
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.cache: GlobalCache = GlobalCache()
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+
+    def _api(self, **kwargs: object) -> GenericAdCtfApiAsync[dict]:
+        return GenericAdCtfApiAsync(
+            lambda raw: json.loads(raw),  # a plain callable, no GenericDecoder subclass
+            "http://localhost/scoreboard_current.json",
+            self.tempdir.name,
+            memory_cache=self.cache,
+            **kwargs  # type: ignore[arg-type]
+        )
+
+    async def test_callable_decoder(self) -> None:
+        with self.patch_request(self._res / "saarctf2025.json") as mock:
+            data = await self._api().retrieve()
+            mock.assert_called_once()
+        self.assertEqual(237, data["current_tick"])
+
+    async def test_injected_memory_cache_is_not_shared(self) -> None:
+        # the process-wide cache is keyed by URL alone, so tests that want isolation inject their own
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        with self.patch_request(self._res / "saarctf2025.json") as mock:
+            await self._api().retrieve()
+            await GenericAdCtfApiAsync(
+                json.loads, "http://localhost/scoreboard_current.json", other.name,
+                memory_cache=GlobalCache()
+            ).retrieve()
+            self.assertEqual(2, mock.call_count)
+
+    async def test_progress_wraps_remote_fetch_only(self) -> None:
+        events = []
+
+        @contextmanager
+        def progress(url: str) -> Generator[None, None, None]:
+            events.append(("start", url))
+            try:
+                yield
+            finally:
+                events.append(("stop", url))
+
+        with self.patch_request(self._res / "saarctf2025.json"):
+            api = self._api(progress=progress)
+            await api.retrieve()
+            await api.retrieve()  # cached, no progress
+
+        url = "http://localhost/scoreboard_current.json"
+        self.assertEqual([("start", url), ("stop", url)], events)
 
 
 async def process_inner(path: Path, counter: Synchronized) -> None:

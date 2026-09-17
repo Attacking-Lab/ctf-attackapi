@@ -1,22 +1,30 @@
 from dataclasses import dataclass, field, asdict
-from typing import Optional, Union, Any, cast
+from typing import Optional, Union, Any
 from typing_extensions import TypeAlias
 
 RawFlagIds: TypeAlias = Union[list, dict[str, Union[str, list, dict]]]
 
 
-def _flat(flag_ids: Any) -> list[str]:
+def flatten_flag_ids(flag_ids: Any) -> list[str]:
+    """
+    Collect every non-null scalar flag ID out of an arbitrarily nested flag-ID structure.
+    Independent of the game API's exact nesting, but loses the round / flag-store structure.
+    """
+    if flag_ids is None:  # a flag store with no ID for this round/team
+        return []
+    if isinstance(flag_ids, str):
+        return [flag_ids]
     if isinstance(flag_ids, list):
         result = []
         for value in flag_ids:
-            result += _flat(value)
+            result += flatten_flag_ids(value)
         return result
     if isinstance(flag_ids, dict):
         result = []
         for value in flag_ids.values():
-            result += _flat(value)
+            result += flatten_flag_ids(value)
         return result
-    return [cast(str, flag_ids)]
+    return [str(flag_ids)]
 
 
 @dataclass(frozen=True)
@@ -46,6 +54,8 @@ class AttackInfo:
     team_lookup: dict[str, Team] = field(default_factory=dict)
     services: set[str] = field(default_factory=set)
     flag_ids: dict[str, dict[str, RawFlagIds]] = field(default_factory=dict)
+    flag_regex: Optional[str] = None
+    current_round: Optional[int] = None
     raw: bytes = b""  # everything, as given by the game API
 
     def team(self, name: Union[str, int]) -> Optional[Team]:
@@ -100,7 +110,7 @@ class AttackInfo:
         :return:
         """
         flag_ids = self.flag_id_raw(service, team)
-        return _flat(flag_ids) if flag_ids is not None else []
+        return flatten_flag_ids(flag_ids) if flag_ids is not None else []
 
     def attack_info_raw(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
         """
