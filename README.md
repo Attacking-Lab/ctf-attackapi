@@ -64,7 +64,7 @@ from attackapi import *
 # 1. Set the API URL in code (or use CTF_API environment variable)
 configure("https://scoreboard.ctf.saarland/api/attack.json")
 # 2. Get attack infos!
-for username in attack_info().flag_id_flat("no-service", "10.32.1.2"):
+for username in attack_info().flag_id_flat("servicename", "10.32.1.2"):
   pwn("10.32.1.2", username)
 ```
 
@@ -166,6 +166,10 @@ print(info.flag_id_raw("servicename", "10.32.1.2"))
 print(info.flag_id_flat("servicename", "10.32.1.2"))
 # => ["abc", "def"]
 ```
+
+Nothing above raises. A lookup that cannot be answered gives you `[]` (or `None` for the raw
+form) and warns, so a typo in an exploit costs a line on stderr rather than the round it was in
+the middle of.
 
 Server Documentation
 --------------------

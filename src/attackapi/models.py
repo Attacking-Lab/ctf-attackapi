@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Union, Any
 from typing_extensions import TypeAlias
@@ -67,52 +68,34 @@ class AttackInfo:
         """
         return self.team_lookup.get(str(name).lower())
 
-    def flag_id_raw(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
+    def flag_id_raw(self, service: str, team: Union[str, int, Team, None]) -> Optional[RawFlagIds]:
         """
         Find flag IDs for a service and team. Flag IDs are returned in the APIs raw format.
+
+        Never raises: a lookup that cannot be answered warns and returns None, so a typo in an
+        exploit costs a warning on stderr rather than the round it was in the middle of.
 
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
         :return:
         """
-        flag_ids = self.flag_ids.get(service.lower(), {})
-        if isinstance(team, Team):
-            if str(team.id) in flag_ids:
-                return flag_ids[str(team.id)]
-            if team.ip is not None and team.ip.lower() in flag_ids:
-                return flag_ids[team.ip.lower()]
-            if team.name is not None and team.name.lower() in flag_ids:
-                return flag_ids[team.name.lower()]
-            return None
-        elif isinstance(team, str):
-            team = team.lower()
-            if team in flag_ids:
-                return flag_ids.get(team.lower())
-            elif team in self.team_lookup:
-                return self.flag_id_raw(service, self.team_lookup[team])
-            return None
-        elif isinstance(team, int):
-            if str(team) in flag_ids:
-                return flag_ids.get(str(team))
-            elif str(team) in self.team_lookup:
-                return self.flag_id_raw(service, self.team_lookup[str(team)])
-            return None
+        return self._flag_id_raw(service, team)
 
-        raise ValueError(f"Invalid team type: {type(team)}: {team!r}")
-
-    def flag_id_flat(self, service: str, team: Union[str, int, Team]) -> list[str]:
+    def flag_id_flat(self, service: str, team: Union[str, int, Team, None]) -> list[str]:
         """
         Find flag IDs for a service and team.
         Flag IDs are returned as a simple string list, containing all attack info for all flag stores.
 
+        Never raises, and returns [] for anything it cannot answer -- see flag_id_raw().
+
         :param service: Name of a service (case insensitive, see field "services" for a list of valid names)
         :param team: Team ID, IP, name, or instance (from .team(...))
         :return:
         """
-        flag_ids = self.flag_id_raw(service, team)
+        flag_ids = self._flag_id_raw(service, team)
         return flatten_flag_ids(flag_ids) if flag_ids is not None else []
 
-    def attack_info_raw(self, service: str, team: Union[str, int, Team]) -> Optional[RawFlagIds]:
+    def attack_info_raw(self, service: str, team: Union[str, int, Team, None]) -> Optional[RawFlagIds]:
         """
         Find attack info for a service and team. Attack info is returned in the APIs raw format.
 
@@ -122,9 +105,9 @@ class AttackInfo:
         :param team: Team ID, IP, name, or instance (from .team(...))
         :return:
         """
-        return self.flag_id_raw(service, team)
+        return self._flag_id_raw(service, team)
 
-    def attack_info_flat(self, service: str, team: Union[str, int, Team]) -> list[str]:
+    def attack_info_flat(self, service: str, team: Union[str, int, Team, None]) -> list[str]:
         """
         Find attack info for a service and team.
         Attack info is returned as a simple string list, containing all attack info for all flag stores.
@@ -135,7 +118,51 @@ class AttackInfo:
         :param team: Team ID, IP, name, or instance (from .team(...))
         :return:
         """
-        return self.flag_id_flat(service, team)
+        flag_ids = self._flag_id_raw(service, team)
+        return flatten_flag_ids(flag_ids) if flag_ids is not None else []
+
+    def _flag_id_raw(self, service: str, team: Union[str, int, Team, None],
+                     stacklevel: int = 3) -> Optional[RawFlagIds]:
+        """
+        The lookup behind all four public accessors. Warns rather than raises on the mistakes that
+        are wrong on every call -- an unknown service or team, a team that never resolved -- and
+        stays quiet about the ones that are a normal part of a running game.
+
+        :param stacklevel: frames between this method and the caller to blame in a warning
+        """
+        if team is None:
+            warnings.warn(f"No team given for service {service!r} - did an earlier team() lookup fail?",
+                          stacklevel=stacklevel)
+            return None
+        flag_ids = self.flag_ids.get(service.lower())
+        if flag_ids is None:
+            warnings.warn(f"Unknown service {service!r}, this game has: {', '.join(sorted(self.services))}",
+                          stacklevel=stacklevel)
+            return None
+        return self._team_flag_ids(service, flag_ids, team, stacklevel + 1)
+
+    def _team_flag_ids(self, service: str, flag_ids: dict, team: Union[str, int, Team],
+                       stacklevel: int) -> Optional[RawFlagIds]:
+        """Pick one team out of a service's flag IDs, which the game API keys by ID, IP, or name."""
+        if isinstance(team, Team):
+            for key in (str(team.id), team.ip, team.name):
+                if key is not None and key.lower() in flag_ids:
+                    return flag_ids[key.lower()]
+            # a team the game knows about but has no flag IDs for: the service may be down, or the
+            # round's info may not be out yet. Both are ordinary, and neither is worth a warning.
+            return None
+        if isinstance(team, (str, int)):
+            key = str(team).lower()
+            if key in flag_ids:
+                return flag_ids[key]
+            if key in self.team_lookup:
+                return self._team_flag_ids(service, flag_ids, self.team_lookup[key], stacklevel)
+            warnings.warn(f"Unknown team {team!r} for service {service!r} - not in this attack info "
+                          f"(a typo, or a team that is offline or banned)", stacklevel=stacklevel)
+            return None
+        warnings.warn(f"Invalid team type for service {service!r}: {type(team).__name__}: {team!r}",
+                      stacklevel=stacklevel)
+        return None
 
     def __str__(self) -> str:
         return repr(self)
