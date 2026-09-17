@@ -8,6 +8,7 @@ import time
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing.sharedctypes import Synchronized
+from multiprocessing.synchronize import Event
 from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
@@ -96,18 +97,29 @@ class ApiTestCase(BaseTestCase):
     def test_concurrent_read_write(self) -> None:
         p = Path(self.tempdir.name) / "test.json"
         p.write_text("{}")
-        processes = [
-            Process(target=process_reader, args=(p,)),
-            Process(target=process_reader, args=(p,)),
-            Process(target=process_reader_slow, args=(p,)),
-            Process(target=process_writer, args=(p,))
+        stop = multiprocessing.Event()
+        readers = [
+            Process(target=process_reader, args=(p, stop)),
+            Process(target=process_reader, args=(p, stop)),
+            Process(target=process_reader_slow, args=(p, stop))
         ]
+        writer = Process(target=process_writer, args=(p,))
+        processes = readers + [writer]
         for process in processes:
             process.start()
-        for process in processes:
-            process.join(timeout=4)
-        for process in processes:
-            self.assertEqual(0, process.exitcode)
+        try:
+            writer.join(timeout=120)
+            stop.set()
+            for process in readers:
+                process.join(timeout=30)
+            for process in processes:
+                self.assertEqual(0, process.exitcode)
+        finally:
+            # a survivor keeps writing into tempdir, and tearDown's rmtree would race it
+            for process in processes:
+                if process.is_alive():
+                    process.terminate()
+                process.join()
 
 
 class GenericApiTestCase(BaseTestCase):
@@ -194,19 +206,19 @@ def _lock_on_windows(p: Path) -> Generator[None, None, None]:
         yield
 
 
-def process_reader(p: Path) -> None:
+def process_reader(p: Path, stop: Event) -> None:
     cache = FileCache(p, p.with_suffix(".json.lock"))
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline:
+    deadline = time.monotonic() + 120  # backstop only; the writer is what ends this
+    while not stop.is_set() and time.monotonic() < deadline:
         with _lock_on_windows(cache._lock):
             json.loads(cache.get() or b'')
         time.sleep(0.001)
 
 
-def process_reader_slow(p: Path) -> None:
+def process_reader_slow(p: Path, stop: Event) -> None:
     cache = FileCache(p, p.with_suffix(".json.lock"))
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline:
+    deadline = time.monotonic() + 120  # backstop only; the writer is what ends this
+    while not stop.is_set() and time.monotonic() < deadline:
         with _lock_on_windows(cache._lock):
             with p.open("rb") as f:
                 time.sleep(0.015)
